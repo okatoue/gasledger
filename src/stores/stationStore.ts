@@ -23,6 +23,8 @@ interface StationState {
   setError: (error: string | null) => void;
   setPendingSelection: (selection: PendingSelection) => void;
   clearPendingSelection: () => void;
+  /** Batch-update multiple fields in a single render cycle */
+  patch: (partial: Partial<Pick<StationState, 'stations' | 'userLocation' | 'isLoading' | 'error'>>) => void;
 }
 
 export const useStationStore = create<StationState>((set) => ({
@@ -37,4 +39,5 @@ export const useStationStore = create<StationState>((set) => ({
   setError: (error) => set({ error }),
   setPendingSelection: (pendingSelection) => set({ pendingSelection }),
   clearPendingSelection: () => set({ pendingSelection: null }),
+  patch: (partial) => set(partial),
 }));

@@ -9,25 +9,20 @@ export function useNearbyStations() {
   const isLoading = useStationStore((s) => s.isLoading);
   const error = useStationStore((s) => s.error);
   const userLocation = useStationStore((s) => s.userLocation);
-  const setStations = useStationStore((s) => s.setStations);
-  const setUserLocation = useStationStore((s) => s.setUserLocation);
-  const setLoading = useStationStore((s) => s.setLoading);
-  const setError = useStationStore((s) => s.setError);
+  const patch = useStationStore((s) => s.patch);
 
   const refresh = useCallback(async () => {
     if (!canSearch()) {
-      setError('Please wait a few seconds before searching again.');
+      patch({ error: 'Please wait a few seconds before searching again.' });
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    patch({ isLoading: true, error: null });
 
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('Location permission is required to find nearby stations.');
-        setLoading(false);
+        patch({ error: 'Location permission is required to find nearby stations.', isLoading: false });
         return;
       }
 
@@ -35,27 +30,25 @@ export function useNearbyStations() {
         accuracy: Location.Accuracy.Balanced,
       });
 
-      setUserLocation({
+      const location = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
-      });
+      };
 
       markSearched();
-      const results = await searchNearbyGasStations({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
+      const results = await searchNearbyGasStations(location);
 
-      setStations(results);
-      if (results.length === 0) {
-        setError('No gas stations found nearby.');
-      }
+      // Single state update: location + stations + loading + error
+      patch({
+        userLocation: location,
+        stations: results,
+        isLoading: false,
+        error: results.length === 0 ? 'No gas stations found nearby.' : null,
+      });
     } catch {
-      setError('Failed to search for nearby stations.');
-    } finally {
-      setLoading(false);
+      patch({ error: 'Failed to search for nearby stations.', isLoading: false });
     }
-  }, [setStations, setUserLocation, setLoading, setError]);
+  }, [patch]);
 
   return { stations, isLoading, error, refresh, userLocation };
 }

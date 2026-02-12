@@ -39,8 +39,10 @@ const StationMarker = React.memo(
         tracksViewChanges={tracksViewChanges}
         stopPropagation
       >
-        <View style={markerStyles.container}>
-          <View style={markerStyles.bubble}>
+        {/* collapsable={false} prevents Android from collapsing intermediate
+            views, which would break the marker bitmap capture */}
+        <View style={markerStyles.container} collapsable={false}>
+          <View style={markerStyles.bubble} collapsable={false}>
             <Text style={markerStyles.text}>{priceLabel}</Text>
           </View>
           <View style={markerStyles.arrow} />
@@ -54,6 +56,74 @@ const StationMarker = React.memo(
     prev.tracksViewChanges === next.tracksViewChanges,
 );
 
+// ── Memoized detail card — avoids redundant fuelPrices lookups ──
+const DetailCard = React.memo(function DetailCard({
+  station,
+  selectedFuelGrade,
+  distanceLabel,
+  onUsePrice,
+  bottomInset,
+}: {
+  station: GasStation;
+  selectedFuelGrade: string;
+  distanceLabel: string;
+  onUsePrice: () => void;
+  bottomInset: number;
+}) {
+  // Build a price-by-grade map once
+  const priceByGrade = useMemo(() => {
+    const map: Record<string, number | null> = {};
+    for (const g of FUEL_GRADES) {
+      const match = station.fuelPrices.find((p) => p.fuelGrade === g.value);
+      map[g.value] = match ? match.priceValue : null;
+    }
+    return map;
+  }, [station.fuelPrices]);
+
+  const hasSelectedPrice = priceByGrade[selectedFuelGrade] != null;
+
+  return (
+    <View style={[styles.detailCard, { paddingBottom: bottomInset + spacing.md }]}>
+      <View style={styles.detailHeader}>
+        <View style={styles.detailInfo}>
+          <Text style={styles.detailName} numberOfLines={1}>{station.name}</Text>
+          <Text style={styles.detailAddress} numberOfLines={1}>{station.address}</Text>
+          <Text style={styles.detailDistance}>{distanceLabel}</Text>
+        </View>
+      </View>
+
+      {/* Prices per grade */}
+      <View style={styles.pricesRow}>
+        {FUEL_GRADES.map((g) => {
+          const price = priceByGrade[g.value];
+          const isSelected = g.value === selectedFuelGrade;
+          return (
+            <View
+              key={g.value}
+              style={[styles.priceChip, isSelected && styles.priceChipSelected]}
+            >
+              <Text style={[styles.priceChipLabel, isSelected && styles.priceChipLabelSelected]}>
+                {g.text}
+              </Text>
+              <Text style={[styles.priceChipValue, isSelected && styles.priceChipValueSelected]}>
+                {price != null ? `$${price.toFixed(3)}` : 'N/A'}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Use This Price button */}
+      {hasSelectedPrice && (
+        <TouchableOpacity style={styles.useButton} onPress={onUsePrice} activeOpacity={0.8}>
+          <Ionicons name="pricetag" size={18} color={colors.white} />
+          <Text style={styles.useButtonText}>Use This Price</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+});
+
 export default function StationsMapScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -64,11 +134,13 @@ export default function StationsMapScreen() {
   const setPendingSelection = useStationStore((s) => s.setPendingSelection);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
 
-  // Start with tracksViewChanges=true so Android captures the full bitmap,
-  // then flip to false to stop per-frame re-rendering (fixes jitter)
+  // Start with tracksViewChanges=true so Android renders the full custom view,
+  // then flip to false to stop per-frame re-rendering.
+  // 1500ms gives the map + marker views enough time to fully lay out before
+  // the bitmap snapshot is captured.
   const [markersSettled, setMarkersSettled] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setMarkersSettled(true), 500);
+    const timer = setTimeout(() => setMarkersSettled(true), 1500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -165,44 +237,13 @@ export default function StationsMapScreen() {
 
       {/* Bottom Detail Card */}
       {selectedStation && (
-        <View style={[styles.detailCard, { paddingBottom: insets.bottom + spacing.md }]}>
-          <View style={styles.detailHeader}>
-            <View style={styles.detailInfo}>
-              <Text style={styles.detailName} numberOfLines={1}>{selectedStation.name}</Text>
-              <Text style={styles.detailAddress} numberOfLines={1}>{selectedStation.address}</Text>
-              <Text style={styles.detailDistance}>{getDistanceLabel(selectedStation)}</Text>
-            </View>
-          </View>
-
-          {/* Prices per grade */}
-          <View style={styles.pricesRow}>
-            {FUEL_GRADES.map((g) => {
-              const match = selectedStation.fuelPrices.find((p) => p.fuelGrade === g.value);
-              const isSelected = g.value === selectedFuelGrade;
-              return (
-                <View
-                  key={g.value}
-                  style={[styles.priceChip, isSelected && styles.priceChipSelected]}
-                >
-                  <Text style={[styles.priceChipLabel, isSelected && styles.priceChipLabelSelected]}>
-                    {g.text}
-                  </Text>
-                  <Text style={[styles.priceChipValue, isSelected && styles.priceChipValueSelected]}>
-                    {match ? `$${match.priceValue.toFixed(3)}` : 'N/A'}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Use This Price button */}
-          {selectedStation.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade) && (
-            <TouchableOpacity style={styles.useButton} onPress={handleUsePrice} activeOpacity={0.8}>
-              <Ionicons name="pricetag" size={18} color={colors.white} />
-              <Text style={styles.useButtonText}>Use This Price</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <DetailCard
+          station={selectedStation}
+          selectedFuelGrade={selectedFuelGrade}
+          distanceLabel={getDistanceLabel(selectedStation)}
+          onUsePrice={handleUsePrice}
+          bottomInset={insets.bottom}
+        />
       )}
     </View>
   );

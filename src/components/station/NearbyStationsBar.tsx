@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  ListRenderItemInfo,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -17,6 +18,64 @@ import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
+// ── Memoized station card ──
+const StationCard = React.memo(function StationCard({
+  station,
+  selectedFuelGrade,
+  distanceUnit,
+  isHome,
+  onSelectPrice,
+}: {
+  station: GasStation;
+  selectedFuelGrade: string;
+  distanceUnit: 'mi' | 'km';
+  isHome: boolean;
+  onSelectPrice: (price: number) => void;
+}) {
+  const priceMatch = station.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
+  const distance =
+    distanceUnit === 'mi'
+      ? metersToMiles(station.distanceM).toFixed(1)
+      : metersToKm(station.distanceM).toFixed(1);
+  const brand = detectBrand(station.name);
+
+  const handlePress = useCallback(() => {
+    if (priceMatch) onSelectPrice(priceMatch.priceValue);
+  }, [priceMatch, onSelectPrice]);
+
+  return (
+    <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress}>
+      {/* Circular brand icon */}
+      <View style={styles.brandWrapper}>
+        <View style={[styles.brandCircle, { backgroundColor: brand.bgColor }]}>
+          {brand.icon ? (
+            <Image source={brand.icon} style={styles.brandIcon} />
+          ) : (
+            <Text style={[styles.brandInitial, { color: brand.color }]}>
+              {brand.label}
+            </Text>
+          )}
+        </View>
+        {isHome && (
+          <View style={styles.homeBadge}>
+            <Ionicons name="star" size={10} color={colors.warning} />
+          </View>
+        )}
+      </View>
+
+      {/* Info — centered */}
+      <Text style={styles.cardName} numberOfLines={1}>{station.name}</Text>
+      {priceMatch ? (
+        <Text style={styles.cardPrice}>${priceMatch.priceValue.toFixed(3)}</Text>
+      ) : (
+        <Text style={styles.cardPriceNA}>N/A</Text>
+      )}
+      <Text style={styles.cardDistance}>{distance} {distanceUnit}</Text>
+    </TouchableOpacity>
+  );
+});
+
+// ── Props ──
 interface NearbyStationsBarProps {
   stations: GasStation[];
   isLoading: boolean;
@@ -28,7 +87,18 @@ interface NearbyStationsBarProps {
   onToggleHome: (station: GasStation) => void;
 }
 
-export default function NearbyStationsBar({
+const CARD_WIDTH = 110;
+const CARD_GAP = spacing.sm;
+
+const keyExtractor = (item: GasStation) => item.placeId;
+
+const getItemLayout = (_data: any, index: number) => ({
+  length: CARD_WIDTH + CARD_GAP,
+  offset: (CARD_WIDTH + CARD_GAP) * index + spacing.md, // account for contentContainerStyle padding
+  index,
+});
+
+function NearbyStationsBar({
   stations,
   isLoading,
   error,
@@ -36,9 +106,25 @@ export default function NearbyStationsBar({
   distanceUnit,
   homeStationPlaceId,
   onSelectPrice,
-  onToggleHome,
 }: NearbyStationsBarProps) {
   const router = useRouter();
+
+  const handleSeeMap = useCallback(() => {
+    router.push({ pathname: '/stations/map', params: { fuelGrade: selectedFuelGrade } });
+  }, [router, selectedFuelGrade]);
+
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<GasStation>) => (
+      <StationCard
+        station={item}
+        selectedFuelGrade={selectedFuelGrade}
+        distanceUnit={distanceUnit}
+        isHome={item.placeId === homeStationPlaceId}
+        onSelectPrice={onSelectPrice}
+      />
+    ),
+    [selectedFuelGrade, distanceUnit, homeStationPlaceId, onSelectPrice],
+  );
 
   return (
     <View style={styles.outer}>
@@ -50,7 +136,7 @@ export default function NearbyStationsBar({
         </View>
         <TouchableOpacity
           style={styles.seeMapButton}
-          onPress={() => router.push({ pathname: '/stations/map', params: { fuelGrade: selectedFuelGrade } })}
+          onPress={handleSeeMap}
           activeOpacity={0.7}
         >
           <Text style={styles.seeMapText}>See Map</Text>
@@ -70,67 +156,25 @@ export default function NearbyStationsBar({
           <Text style={styles.centeredText}>{error}</Text>
         </View>
       ) : (
-        <ScrollView
+        <FlatList
           horizontal
+          data={stations}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          getItemLayout={getItemLayout}
           showsHorizontalScrollIndicator={false}
           style={styles.cardScroll}
           contentContainerStyle={styles.cardList}
-        >
-          {stations.map((station) => {
-            const priceMatch = station.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
-            const distance =
-              distanceUnit === 'mi'
-                ? metersToMiles(station.distanceM).toFixed(1)
-                : metersToKm(station.distanceM).toFixed(1);
-            const isHome = station.placeId === homeStationPlaceId;
-            const brand = detectBrand(station.name);
-
-            return (
-              <TouchableOpacity
-                key={station.placeId}
-                style={styles.card}
-                activeOpacity={0.7}
-                onPress={() => {
-                  if (priceMatch) onSelectPrice(priceMatch.priceValue);
-                }}
-              >
-                {/* Circular brand icon */}
-                <View style={styles.brandWrapper}>
-                  <View style={[styles.brandCircle, { backgroundColor: brand.bgColor }]}>
-                    {brand.icon ? (
-                      <Image source={brand.icon} style={styles.brandIcon} />
-                    ) : (
-                      <Text style={[styles.brandInitial, { color: brand.color }]}>
-                        {brand.label}
-                      </Text>
-                    )}
-                  </View>
-                  {isHome && (
-                    <View style={styles.homeBadge}>
-                      <Ionicons name="star" size={10} color={colors.warning} />
-                    </View>
-                  )}
-                </View>
-
-                {/* Info — centered */}
-                <Text style={styles.cardName} numberOfLines={1}>{station.name}</Text>
-                {priceMatch ? (
-                  <Text style={styles.cardPrice}>${priceMatch.priceValue.toFixed(3)}</Text>
-                ) : (
-                  <Text style={styles.cardPriceNA}>N/A</Text>
-                )}
-                <Text style={styles.cardDistance}>{distance} {distanceUnit}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+          removeClippedSubviews
+        />
       )}
     </View>
   );
 }
 
+export default React.memo(NearbyStationsBar);
+
 const CIRCLE_SIZE = 52;
-const CARD_WIDTH = 110;
 
 const styles = StyleSheet.create({
   outer: {
@@ -180,7 +224,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   cardList: {
-    gap: spacing.sm,
+    gap: CARD_GAP,
     paddingHorizontal: spacing.md,
   },
   cardScroll: {
