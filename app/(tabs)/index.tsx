@@ -23,10 +23,8 @@ import { useTracking } from '@/hooks/useTracking';
 import { useGasPrice } from '@/hooks/useGasPrice';
 import { useHomeStation } from '@/hooks/useHomeStation';
 import { useNearbyStations } from '@/hooks/useNearbyStations';
-import { sessionRepository } from '@/db/repositories/sessionRepository';
 import { lastPriceRepository } from '@/db/repositories/lastPriceRepository';
 import { formatDurationTimer, formatDistance, formatCurrency } from '@/utils/formatting';
-import { env } from '@/config/env';
 import LocationModeModal from '@/components/session/LocationModeModal';
 import NearbyStationsBar from '@/components/station/NearbyStationsBar';
 import FuelGradePicker from '@/components/common/FuelGradePicker';
@@ -55,13 +53,10 @@ function ParkedDashboard({
   vehicle,
   distanceUnit,
   volumeUnit,
-  monthlySpend,
-  monthlyDistance,
   selectedFuelGrade,
   onChangeFuelGrade,
   homeStationName,
   priceSource,
-  hasApiKey,
   stations,
   stationsLoading,
   stationsError,
@@ -76,13 +71,10 @@ function ParkedDashboard({
   vehicle: Vehicle;
   distanceUnit: 'mi' | 'km';
   volumeUnit: 'gal' | 'l';
-  monthlySpend: number;
-  monthlyDistance: number;
   selectedFuelGrade: string;
   onChangeFuelGrade: (grade: string) => void;
   homeStationName: string | null;
   priceSource: string;
-  hasApiKey: boolean;
   stations: import('@/services/places/placesService').GasStation[];
   stationsLoading: boolean;
   stationsError: string | null;
@@ -170,35 +162,18 @@ function ParkedDashboard({
         )}
 
         {/* Nearby Stations */}
-        {hasApiKey && (
-          <>
-            <View style={styles.fuelPriceDivider} />
-            <NearbyStationsBar
-              stations={stations}
-              isLoading={stationsLoading}
-              error={stationsError}
-              selectedFuelGrade={selectedFuelGrade}
-              distanceUnit={distanceUnit}
-              homeStationPlaceId={homeStationPlaceId}
-              onSelectPrice={onSelectStationPrice}
-              onToggleHome={onToggleHome}
-              embedded
-            />
-          </>
-        )}
-      </View>
-
-      {/* D. Quick Stats Strip */}
-      <View style={styles.statsStrip}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatCurrency(monthlySpend)}</Text>
-          <Text style={styles.statLabel}>This Month</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatDistance(monthlyDistance, distanceUnit)}</Text>
-          <Text style={styles.statLabel}>Total Distance</Text>
-        </View>
+        <View style={styles.fuelPriceDivider} />
+        <NearbyStationsBar
+          stations={stations}
+          isLoading={stationsLoading}
+          error={stationsError}
+          selectedFuelGrade={selectedFuelGrade}
+          distanceUnit={distanceUnit}
+          homeStationPlaceId={homeStationPlaceId}
+          onSelectPrice={onSelectStationPrice}
+          onToggleHome={onToggleHome}
+          embedded
+        />
       </View>
 
       {/* C. Big Start Button */}
@@ -410,10 +385,7 @@ export default function DashboardScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedFuelGrade, setSelectedFuelGrade] = useState<string>('regular');
-  const [monthlySpend, setMonthlySpend] = useState(0);
-  const [monthlyDistance, setMonthlyDistance] = useState(0);
 
-  const hasApiKey = !!env.GOOGLE_PLACES_API_KEY;
   const homeStation = useHomeStation(session?.user.id);
   const nearbyStations = useNearbyStations();
 
@@ -429,8 +401,8 @@ export default function DashboardScreen() {
 
   // Auto-fetch nearby stations on mount
   useEffect(() => {
-    if (hasApiKey) nearbyStations.refresh();
-  }, [hasApiKey]);
+    nearbyStations.refresh();
+  }, []);
 
   const homeStationPrice = homeStation.getPriceForGrade(selectedFuelGrade);
 
@@ -457,14 +429,6 @@ export default function DashboardScreen() {
       setSelectedFuelGrade(selectedVehicle.default_fuel_grade || 'regular');
     }
   }, [selectedVehicle?.id]);
-
-  useEffect(() => {
-    if (!session) return;
-    sessionRepository.getMonthlyStats(session.user.id).then((stats) => {
-      setMonthlySpend(stats.totalSpend);
-      setMonthlyDistance(stats.totalDistanceM);
-    });
-  }, [session, activeSessionId]);
 
   const isActive = !!activeSessionId;
 
@@ -583,13 +547,10 @@ export default function DashboardScreen() {
           vehicle={selectedVehicle}
           distanceUnit={distanceUnit}
           volumeUnit={volumeUnit}
-          monthlySpend={monthlySpend}
-          monthlyDistance={monthlyDistance}
           selectedFuelGrade={selectedFuelGrade}
           onChangeFuelGrade={setSelectedFuelGrade}
           homeStationName={homeStation.homeStation?.name ?? null}
           priceSource={priceSource}
-          hasApiKey={hasApiKey}
           stations={nearbyStations.stations}
           stationsLoading={nearbyStations.isLoading}
           stationsError={nearbyStations.error}
@@ -685,24 +646,6 @@ const styles = StyleSheet.create({
   priceCurrency: { ...typography.h3, color: colors.text },
   priceInput: { ...typography.h3, color: colors.text, width: 62, padding: 0, textAlign: 'center', marginBottom: 2 },
   priceUnit: { ...typography.h3, color: colors.text },
-
-  // ── Quick Stats ──
-  statsStrip: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    flexDirection: 'row',
-    padding: spacing.md + 4,
-    marginBottom: spacing.xl,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { ...typography.h2, color: colors.text },
-  statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.sm },
 
   // ── Start Button ──
   startButtonContainer: { alignItems: 'center', marginBottom: spacing.xl + 8 },

@@ -8,7 +8,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
 import { vehicleService } from '@/services/vehicle/vehicleService';
-import { formatDurationLabel, formatDistance } from '@/utils/formatting';
+import { formatDurationLabel, formatDistance, formatCurrency } from '@/utils/formatting';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -22,16 +22,21 @@ export default function SessionHistoryScreen() {
   const [vehicleMap, setVehicleMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [monthlySpend, setMonthlySpend] = useState(0);
+  const [monthlyDistance, setMonthlyDistance] = useState(0);
 
   const loadData = useCallback(async () => {
     if (!session) return;
     try {
-      const [allSessions, vehicles] = await Promise.all([
+      const [allSessions, vehicles, stats] = await Promise.all([
         sessionRepository.getByUser(session.user.id),
         vehicleService.getByUser(session.user.id),
+        sessionRepository.getMonthlyStats(session.user.id),
       ]);
       const completed = allSessions.filter((s) => s.status === 'completed');
       setSessions(completed);
+      setMonthlySpend(stats.totalSpend);
+      setMonthlyDistance(stats.totalDistanceM);
 
       const map = new Map<string, string>();
       for (const v of vehicles) {
@@ -99,6 +104,19 @@ export default function SessionHistoryScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.statsStrip}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{formatCurrency(monthlySpend)}</Text>
+              <Text style={styles.statLabel}>This Month</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{formatDistance(monthlyDistance, distanceUnit)}</Text>
+              <Text style={styles.statLabel}>Total Distance</Text>
+            </View>
+          </View>
+        }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
@@ -137,6 +155,23 @@ const styles = StyleSheet.create({
   tripDetail: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
   tripRight: { flexDirection: 'row', alignItems: 'center', marginLeft: spacing.md },
   tripCost: { ...typography.h3, color: colors.text, marginRight: 4 },
+
+  statsStrip: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    flexDirection: 'row',
+    padding: spacing.md + 4,
+    marginBottom: spacing.md,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { ...typography.h2, color: colors.text },
+  statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  statDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.sm },
 
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyTitle: { ...typography.h3, color: colors.text, marginTop: spacing.md },
