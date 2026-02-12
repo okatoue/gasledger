@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,11 +26,13 @@ const StationMarker = React.memo(
   function StationMarker({
     station,
     priceLabel,
+    loading,
     onPress,
     tracksViewChanges,
   }: {
     station: GasStation;
     priceLabel: string;
+    loading: boolean;
     onPress: (station: GasStation) => void;
     tracksViewChanges: boolean;
   }) {
@@ -44,7 +47,11 @@ const StationMarker = React.memo(
             views, which would break the marker bitmap capture */}
         <View style={markerStyles.container} collapsable={false}>
           <View style={markerStyles.bubble} collapsable={false}>
-            <Text style={markerStyles.text}>{priceLabel}</Text>
+            {loading ? (
+              <ActivityIndicator size={12} color={colors.primary} />
+            ) : (
+              <Text style={markerStyles.text}>{priceLabel}</Text>
+            )}
           </View>
           <View style={markerStyles.arrow} />
         </View>
@@ -54,6 +61,7 @@ const StationMarker = React.memo(
   (prev, next) =>
     prev.station.placeId === next.station.placeId &&
     prev.priceLabel === next.priceLabel &&
+    prev.loading === next.loading &&
     prev.tracksViewChanges === next.tracksViewChanges,
 );
 
@@ -63,12 +71,14 @@ const DetailCard = React.memo(function DetailCard({
   selectedFuelGrade,
   distanceLabel,
   onUsePrice,
+  onSelectGrade,
   bottomInset,
 }: {
   station: GasStation;
   selectedFuelGrade: string;
   distanceLabel: string;
   onUsePrice: () => void;
+  onSelectGrade: (grade: string) => void;
   bottomInset: number;
 }) {
   // Build a price-by-grade map once
@@ -99,9 +109,11 @@ const DetailCard = React.memo(function DetailCard({
           const price = priceByGrade[g.value];
           const isSelected = g.value === selectedFuelGrade;
           return (
-            <View
+            <TouchableOpacity
               key={g.value}
               style={[styles.priceChip, isSelected && styles.priceChipSelected]}
+              onPress={() => onSelectGrade(g.value)}
+              activeOpacity={0.7}
             >
               <Text style={[styles.priceChipLabel, isSelected && styles.priceChipLabelSelected]}>
                 {g.text}
@@ -109,7 +121,7 @@ const DetailCard = React.memo(function DetailCard({
               <Text style={[styles.priceChipValue, isSelected && styles.priceChipValueSelected]}>
                 {price != null ? `$${price.toFixed(3)}` : 'N/A'}
               </Text>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -135,17 +147,30 @@ export default function StationsMapScreen() {
   const setPendingSelection = useStationStore((s) => s.setPendingSelection);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
 
-  // tracksViewChanges=true lets Android render the full custom marker view;
-  // once settled we flip to false to stop per-frame re-rendering.
-  // Re-runs whenever selectedFuelGrade changes so the native map
-  // re-captures marker bitmaps with the updated price labels.
-  const [markersSettled, setMarkersSettled] = useState(false);
   const [selectedFuelGrade, setSelectedFuelGrade] = useState(params.fuelGrade ?? 'regular');
 
+  // When the fuel grade changes, markers show a spinner briefly while the
+  // new prices load, then tracksViewChanges stays true a bit longer so
+  // the native map can recapture the updated bitmap.
+  const [markersSettled, setMarkersSettled] = useState(false);
+  const [gradeTransitioning, setGradeTransitioning] = useState(false);
+  const isFirstGrade = useRef(true);
+
   useEffect(() => {
+    if (isFirstGrade.current) {
+      isFirstGrade.current = false;
+      // Initial mount — just run the settle timer
+      const settle = setTimeout(() => setMarkersSettled(true), 1500);
+      return () => clearTimeout(settle);
+    }
+
+    // Grade changed — show spinner, then reveal prices, then settle bitmap
+    setGradeTransitioning(true);
     setMarkersSettled(false);
-    const timer = setTimeout(() => setMarkersSettled(true), 1500);
-    return () => clearTimeout(timer);
+
+    const reveal = setTimeout(() => setGradeTransitioning(false), 350);
+    const settle = setTimeout(() => setMarkersSettled(true), 1500);
+    return () => { clearTimeout(reveal); clearTimeout(settle); };
   }, [selectedFuelGrade]);
   const [selectedStation, setSelectedStation] = useState<GasStation | null>(null);
   const mapRef = useRef<MapView>(null);
@@ -188,7 +213,11 @@ export default function StationsMapScreen() {
     if (!selectedStation) return;
     const priceMatch = selectedStation.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
     if (priceMatch) {
-      setPendingSelection({ price: priceMatch.priceValue, stationName: selectedStation.name });
+      setPendingSelection({
+        price: priceMatch.priceValue,
+        stationName: selectedStation.name,
+        fuelGrade: selectedFuelGrade,
+      });
     }
     // Small delay so Zustand subscribers fire before navigation
     setTimeout(() => router.back(), 50);
@@ -236,6 +265,7 @@ export default function StationsMapScreen() {
               key={station.placeId}
               station={station}
               priceLabel={priceLabels[station.placeId]}
+              loading={gradeTransitioning}
               onPress={handleMarkerPress}
               tracksViewChanges={!markersSettled}
             />
@@ -255,6 +285,7 @@ export default function StationsMapScreen() {
           selectedFuelGrade={selectedFuelGrade}
           distanceLabel={getDistanceLabel(selectedStation)}
           onUsePrice={handleUsePrice}
+          onSelectGrade={setSelectedFuelGrade}
           bottomInset={insets.bottom}
         />
       )}

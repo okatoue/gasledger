@@ -530,10 +530,29 @@ export default function DashboardScreen() {
 
   // Consume pending price selection from map
   useEffect(() => {
-    if (pendingSelection) {
-      handleChangePrice(pendingSelection.price);
-      clearPendingSelection();
-    }
+    if (!pendingSelection || !selectedVehicle) return;
+    const { price, fuelGrade } = pendingSelection;
+    clearPendingSelection();
+
+    const apply = async () => {
+      // Persist first so useGasPrice finds it when the grade changes
+      await lastPriceRepository.upsert(
+        selectedVehicle.id,
+        fuelGrade,
+        price,
+        volumeUnit === 'gal' ? 'per_gal' : 'per_l',
+        'usd',
+      ).catch(() => {});
+
+      if (fuelGrade !== selectedFuelGrade) {
+        // Switching grade triggers useGasPrice which reads the DB
+        setSelectedFuelGrade(fuelGrade);
+      } else {
+        // Same grade — update price directly
+        setGasPrice(price);
+      }
+    };
+    apply();
   }, [pendingSelection]);
 
   const handleStopDrive = async () => {

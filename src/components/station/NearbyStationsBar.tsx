@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -112,6 +112,19 @@ function NearbyStationsBar({
 }: NearbyStationsBarProps) {
   const router = useRouter();
 
+  // Brief loading state when the fuel grade changes to avoid layout jitter
+  const [transitioning, setTransitioning] = useState(false);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setTransitioning(true);
+    const timer = setTimeout(() => setTransitioning(false), 300);
+    return () => clearTimeout(timer);
+  }, [selectedFuelGrade]);
+
   // Only show stations that have a price for the selected grade
   const visibleStations = useMemo(
     () => stations.filter((s) => s.fuelPrices.some((p) => p.fuelGrade === selectedFuelGrade)),
@@ -154,7 +167,11 @@ function NearbyStationsBar({
       </View>
 
       {/* Content */}
-      {isLoading && stations.length === 0 ? (
+      {transitioning ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      ) : isLoading && stations.length === 0 ? (
         <View style={styles.centered}>
           <ActivityIndicator size="small" color={colors.primary} />
           <Text style={styles.centeredText}>Searching nearby...</Text>
