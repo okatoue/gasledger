@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,10 +35,12 @@ const StationMarker = React.memo(
     onPress: (station: GasStation) => void;
     tracksViewChanges: boolean;
   }) {
+    const handlePress = useCallback(() => onPress(station), [station.placeId, onPress]);
+
     return (
       <Marker
         coordinate={{ latitude: station.latitude, longitude: station.longitude }}
-        onPress={() => onPress(station)}
+        onPress={handlePress}
         tracksViewChanges={tracksViewChanges}
         stopPropagation
       >
@@ -47,11 +48,7 @@ const StationMarker = React.memo(
             views, which would break the marker bitmap capture */}
         <View style={markerStyles.container} collapsable={false}>
           <View style={markerStyles.bubble} collapsable={false}>
-            {loading ? (
-              <ActivityIndicator size={12} color={colors.primary} />
-            ) : (
-              <Text style={markerStyles.text}>{priceLabel}</Text>
-            )}
+            <Text style={markerStyles.text}>{loading ? '...' : priceLabel}</Text>
           </View>
           <View style={markerStyles.arrow} />
         </View>
@@ -149,27 +146,25 @@ export default function StationsMapScreen() {
 
   const [selectedFuelGrade, setSelectedFuelGrade] = useState(params.fuelGrade ?? 'regular');
 
-  // When the fuel grade changes, markers show a spinner briefly while the
-  // new prices load, then tracksViewChanges stays true a bit longer so
-  // the native map can recapture the updated bitmap.
-  const [markersSettled, setMarkersSettled] = useState(false);
-  const [gradeTransitioning, setGradeTransitioning] = useState(false);
+  // Marker lifecycle: loading → revealing → settled
+  // 'loading'   — show "..." placeholder, tracksViewChanges=true
+  // 'revealing'  — show prices, tracksViewChanges=true (brief bitmap capture window)
+  // 'settled'   — tracksViewChanges=false, bitmap frozen
+  const [markerPhase, setMarkerPhase] = useState<'loading' | 'revealing' | 'settled'>('revealing');
   const isFirstGrade = useRef(true);
 
   useEffect(() => {
     if (isFirstGrade.current) {
       isFirstGrade.current = false;
-      // Initial mount — just run the settle timer
-      const settle = setTimeout(() => setMarkersSettled(true), 1500);
+      // Initial mount — already 'revealing', just settle after bitmap capture
+      const settle = setTimeout(() => setMarkerPhase('settled'), 800);
       return () => clearTimeout(settle);
     }
 
-    // Grade changed — show spinner, then reveal prices, then settle bitmap
-    setGradeTransitioning(true);
-    setMarkersSettled(false);
-
-    const reveal = setTimeout(() => setGradeTransitioning(false), 350);
-    const settle = setTimeout(() => setMarkersSettled(true), 1500);
+    // Grade changed — loading → 300ms → revealing → 400ms → settled
+    setMarkerPhase('loading');
+    const reveal = setTimeout(() => setMarkerPhase('revealing'), 300);
+    const settle = setTimeout(() => setMarkerPhase('settled'), 700);
     return () => { clearTimeout(reveal); clearTimeout(settle); };
   }, [selectedFuelGrade]);
   const [selectedStation, setSelectedStation] = useState<GasStation | null>(null);
@@ -265,9 +260,9 @@ export default function StationsMapScreen() {
               key={station.placeId}
               station={station}
               priceLabel={priceLabels[station.placeId]}
-              loading={gradeTransitioning}
+              loading={markerPhase === 'loading'}
               onPress={handleMarkerPress}
-              tracksViewChanges={!markersSettled}
+              tracksViewChanges={markerPhase !== 'settled'}
             />
           ))}
         </MapView>
