@@ -13,31 +13,19 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
+import { trackingGapRepository, TrackingGap } from '@/db/repositories/trackingGapRepository';
+import { syncService } from '@/services/sync/syncService';
 import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
 import { calculateFuelUsed, calculateCost } from '@/services/fuel/fuelCalculator';
+import { formatDurationLabel } from '@/utils/formatting';
 import DropdownPicker from '@/components/common/Select';
+import { FUEL_GRADES } from '@/utils/fuelGrades';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
-
-const FUEL_GRADES = [
-  { text: 'Regular', value: 'regular' },
-  { text: 'Midgrade', value: 'midgrade' },
-  { text: 'Premium', value: 'premium' },
-  { text: 'Diesel', value: 'diesel' },
-];
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.round(seconds % 60);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
 
 export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,6 +36,7 @@ export default function SessionDetailScreen() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [gaps, setGaps] = useState<TrackingGap[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -61,9 +50,10 @@ export default function SessionDetailScreen() {
   const loadData = useCallback(async () => {
     if (!id || !authSession) return;
     try {
-      const [s, v] = await Promise.all([
+      const [s, v, g] = await Promise.all([
         sessionRepository.getById(id),
         vehicleService.getByUser(authSession.user.id),
+        trackingGapRepository.getBySession(id),
       ]);
       if (s) {
         setSession(s);
@@ -73,6 +63,7 @@ export default function SessionDetailScreen() {
         setEditNotes(s.notes ?? '');
       }
       setVehicles(v);
+      setGaps(g);
     } catch (error) {
       console.error('[SessionDetail] Load failed:', error);
     } finally {
@@ -106,6 +97,8 @@ export default function SessionDetailScreen() {
         estCost,
       });
 
+      syncService.syncSession(session.id).catch(() => {});
+
       setEditing(false);
       setLoading(true);
       await loadData();
@@ -129,6 +122,7 @@ export default function SessionDetailScreen() {
           onPress: async () => {
             try {
               await sessionRepository.deleteSession(session!.id);
+              syncService.syncSessionDelete(session!.id).catch(() => {});
               router.back();
             } catch (error) {
               console.error('[SessionDetail] Delete failed:', error);
@@ -193,12 +187,12 @@ export default function SessionDetailScreen() {
         </View>
         <View style={styles.statCard}>
           <Ionicons name="time-outline" size={20} color={colors.primary} />
-          <Text style={styles.statValue}>{formatDuration(durationSeconds)}</Text>
+          <Text style={styles.statValue}>{formatDurationLabel(durationSeconds)}</Text>
           <Text style={styles.statLabel}>Duration</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="pause-circle-outline" size={20} color={colors.primary} />
-          <Text style={styles.statValue}>{formatDuration(session.stopped_seconds)}</Text>
+          <Text style={styles.statValue}>{formatDurationLabel(session.stopped_seconds)}</Text>
           <Text style={styles.statLabel}>Stopped</Text>
         </View>
         <View style={styles.statCard}>
@@ -297,6 +291,33 @@ export default function SessionDetailScreen() {
         </View>
       )}
 
+      {/* Tracking Gaps */}
+      {!editing && gaps.length > 0 && (
+        <View style={styles.detailsCard}>
+          <Text style={styles.sectionTitle}>Tracking Gaps</Text>
+          <Text style={styles.gapSummary}>
+            {gaps.length} gap{gaps.length !== 1 ? 's' : ''} detected during this session
+          </Text>
+          {gaps.map((gap) => {
+            const startTime = new Date(gap.started_at);
+            const endTime = gap.ended_at ? new Date(gap.ended_at) : null;
+            const durationS = endTime
+              ? Math.floor((endTime.getTime() - startTime.getTime()) / 1000)
+              : null;
+            return (
+              <View key={gap.id} style={styles.detailRow}>
+                <Text style={styles.detailLabel}>
+                  {format(startTime, 'h:mm:ss a')}
+                </Text>
+                <Text style={styles.detailValue}>
+                  {durationS !== null ? formatDurationLabel(durationS) : 'Open'}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
       {/* Notes (read mode) */}
       {!editing && session.notes ? (
         <View style={styles.notesCard}>
@@ -390,6 +411,7 @@ const styles = StyleSheet.create({
   detailValue: { ...typography.body, color: colors.text, fontWeight: '600' },
 
   sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
+  gapSummary: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
   fieldLabel: { ...typography.label, color: '#374151', marginBottom: spacing.xs + 2 },
   input: {
     backgroundColor: colors.surfaceSecondary,

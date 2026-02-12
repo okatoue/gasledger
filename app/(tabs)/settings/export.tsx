@@ -14,19 +14,13 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
 import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
-import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
+import { exportSessionsCsv } from '@/services/export/csvExporter';
 import DropdownPicker from '@/components/common/Select';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
 type DateRange = 'all' | '7' | '30' | '90';
-
-function formatDurationCSV(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${h}h ${m}m`;
-}
 
 export default function ExportScreen() {
   const authSession = useAuthStore((s) => s.session);
@@ -74,53 +68,7 @@ export default function ExportScreen() {
         return;
       }
 
-      // Build vehicle name map
-      const vehicleMap = new Map<string, string>();
-      for (const v of vehicles) {
-        vehicleMap.set(v.id, `${v.year} ${v.make} ${v.model}`);
-      }
-
-      const distLabel = distanceUnit === 'mi' ? 'Distance (mi)' : 'Distance (km)';
-      const fuelLabel = volumeUnit === 'gal' ? 'Fuel Used (gal)' : 'Fuel Used (L)';
-
-      // CSV header
-      const headers = [
-        'Date',
-        'Vehicle',
-        distLabel,
-        'Duration',
-        'Stopped',
-        'Fuel Grade',
-        'Gas Price',
-        fuelLabel,
-        'Cost',
-        'Notes',
-      ];
-
-      const rows = filtered.map((s) => {
-        const dist = distanceUnit === 'mi' ? metersToMiles(s.distance_m) : metersToKm(s.distance_m);
-        const dur = s.ended_at_user && s.started_at_user
-          ? Math.floor((new Date(s.ended_at_user).getTime() - new Date(s.started_at_user).getTime()) / 1000)
-          : 0;
-
-        return [
-          s.started_at_user,
-          vehicleMap.get(s.vehicle_id) ?? 'Unknown',
-          dist.toFixed(1),
-          formatDurationCSV(dur),
-          formatDurationCSV(s.stopped_seconds),
-          s.fuel_grade,
-          (s.gas_price_value ?? 0).toFixed(3),
-          (s.est_fuel_used ?? 0).toFixed(2),
-          (s.est_cost ?? 0).toFixed(2),
-          (s.notes ?? '').replace(/"/g, '""'),
-        ];
-      });
-
-      const csvContent =
-        headers.join(',') +
-        '\n' +
-        rows.map((row) => row.map((cell) => `"${cell}"`).join(',')).join('\n');
+      const csvContent = exportSessionsCsv(filtered, vehicles, { distanceUnit, volumeUnit });
 
       const fileName = `gasledger_export_${new Date().toISOString().slice(0, 10)}.csv`;
       const file = new File(Paths.cache, fileName);

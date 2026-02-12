@@ -8,6 +8,8 @@ import { routePointRepository } from '@/db/repositories/routePointRepository';
 import { deleteDatabase } from '@/db/database';
 import { supabase } from '@/config/supabase';
 import { vehicleService } from '@/services/vehicle/vehicleService';
+import { syncService } from '@/services/sync/syncService';
+import { syncQueue } from '@/services/sync/syncQueue';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -30,6 +32,7 @@ export default function PrivacyScreen() {
               const session = useAuthStore.getState().session;
               if (session) {
                 await sessionRepository.deleteAllByUser(session.user.id);
+                syncService.deleteAllSessionsRemote(session.user.id).catch(console.error);
               }
               Alert.alert('Done', 'All sessions have been deleted.');
             } catch (error) {
@@ -92,6 +95,7 @@ export default function PrivacyScreen() {
                       if (session) {
                         await vehicleService.deleteAllByUser(session.user.id);
                       }
+                      await syncQueue.clear().catch(() => {});
                       await deleteDatabase();
                     } catch (error) {
                       console.error('[Privacy] Delete account failed:', error);

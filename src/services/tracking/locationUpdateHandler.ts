@@ -4,7 +4,8 @@ import { processSpeedUpdate, resetStoppedTimeDetector } from './stoppedTimeDetec
 import { useSessionStore } from '@/stores/sessionStore';
 import { sessionRepository } from '@/db/repositories/sessionRepository';
 import { routePointRepository } from '@/db/repositories/routePointRepository';
-import { ACCURACY_GOOD_M, ACCURACY_WEAK_M, GAP_TIME_THRESHOLD_S } from '@/utils/constants';
+import { trackingGapRepository } from '@/db/repositories/trackingGapRepository';
+import { ACCURACY_GOOD_M, ACCURACY_WEAK_M, GAP_TIME_THRESHOLD_S, GAP_DETECTION_MIN_POINTS } from '@/utils/constants';
 
 interface AcceptedPoint {
   latitude: number;
@@ -25,6 +26,8 @@ let routePointCount = 0;
 let lastAcceptedTimestamp: number | null = null;
 let firstFixRecorded = false;
 let acceptedPointCount = 0;
+let activeGapId: string | null = null;
+let gapStartTimestamp: number | null = null;
 
 const BATCH_FLUSH_SIZE = 10;
 const DB_PERSIST_INTERVAL = 5;
@@ -40,6 +43,8 @@ export function initSession(sessionId: string, routeEnabledFlag: boolean): void 
   routePointCount = 0;
   firstFixRecorded = false;
   acceptedPointCount = 0;
+  activeGapId = null;
+  gapStartTimestamp = null;
   resetProcessor();
   resetStoppedTimeDetector();
 }
@@ -49,6 +54,15 @@ export function teardownSession(): {
   stoppedSeconds: number;
   routePointCount: number;
 } {
+  // Close any open tracking gap
+  if (activeGapId) {
+    trackingGapRepository.endGap(activeGapId, new Date().toISOString()).catch((e) =>
+      console.error('[Tracking] Failed to close gap on teardown:', e),
+    );
+    activeGapId = null;
+    gapStartTimestamp = null;
+  }
+
   // Flush remaining route points
   if (routeEnabled && pendingRoutePoints.length > 0 && currentSessionId) {
     routePointRepository.insertBatch(currentSessionId, pendingRoutePoints).catch((e) =>
@@ -78,17 +92,27 @@ export function processLocationUpdate(raw: {
   const store = useSessionStore.getState();
 
   // Update GPS signal indicator based on accuracy
-  if (raw.accuracy === null || raw.accuracy > ACCURACY_WEAK_M) {
-    store.setGpsSignal('lost');
-  } else if (raw.accuracy > ACCURACY_GOOD_M) {
-    store.setGpsSignal('weak');
-  } else {
-    store.setGpsSignal('good');
-  }
+  const signal = raw.accuracy === null || raw.accuracy > ACCURACY_WEAK_M
+    ? 'lost'
+    : raw.accuracy > ACCURACY_GOOD_M
+    ? 'weak'
+    : 'good';
+  store.setGpsSignal(signal);
+  console.log(
+    `[GPS] Signal: ${signal} (acc: ${raw.accuracy?.toFixed(1) ?? 'null'}m, ` +
+    `thresholds: good≤${ACCURACY_GOOD_M}m, weak≤${ACCURACY_WEAK_M}m)`,
+  );
 
   // Run through location processor (accuracy gate, min distance, speed jump rejection)
   const accepted = processLocationPoint(raw);
-  if (!accepted) return;
+  if (!accepted) {
+    console.log('[GPS] Point rejected by processor (accuracy/distance/speed gate)');
+    return;
+  }
+  console.log(
+    `[GPS] Point accepted — dist so far: ${totalDistanceM.toFixed(1)}m, ` +
+    `accepted count: ${acceptedPointCount + 1}`,
+  );
 
   // Record first fix timestamp
   if (!firstFixRecorded) {
@@ -109,8 +133,27 @@ export function processLocationUpdate(raw: {
         accepted.longitude,
       );
       totalDistanceM += segmentDistance;
+
+      // Close any active gap — timely update received
+      if (activeGapId) {
+        trackingGapRepository.endGap(activeGapId, new Date(accepted.timestamp).toISOString()).catch((e) =>
+          console.error('[Tracking] Failed to end gap:', e),
+        );
+        activeGapId = null;
+        gapStartTimestamp = null;
+        store.setTrackingPaused(false);
+      }
+    } else {
+      // Gap detected — record it if not already active (skip during GPS warmup)
+      if (!activeGapId && currentSessionId && acceptedPointCount >= GAP_DETECTION_MIN_POINTS) {
+        gapStartTimestamp = lastAcceptedTimestamp;
+        trackingGapRepository
+          .startGap(currentSessionId, new Date(lastAcceptedTimestamp).toISOString(), 'gps_signal_gap')
+          .then((id) => { activeGapId = id; })
+          .catch((e) => console.error('[Tracking] Failed to start gap:', e));
+        store.setTrackingPaused(true);
+      }
     }
-    // else: gap too long, don't add straight-line distance
   }
   lastAcceptedLat = accepted.latitude;
   lastAcceptedLon = accepted.longitude;

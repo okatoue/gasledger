@@ -30,7 +30,19 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(eas build:view:*)",
-      "WebFetch(domain:job-logs.eascdn.net)"
+      "WebFetch(domain:job-logs.eascdn.net)",
+      "Bash(eas build:list:*)",
+      "Bash(npm ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:expo.dev)",
+      "Bash(wc:*)",
+      "Bash(findstr /S /R \"VinInput\\\\|VehicleCard\\\\|EfficiencyInput\\\\|TrackingStatusBanner\\\\|SessionCard\\\\|LiveStats\\\\|GasPriceInput\\\\|FuelGradeSelector\\\\|useVehicles\\\\|useSessions\\\\|from.*migrations\\\\|session/active\\\\|utils/geo\\\\|utils/locale\" \"src/**/*.tsx\" \"src/**/*.ts\" \"app/**/*.tsx\" \"app/**/*.ts\")",
+      "Bash(findstr:*)",
+      "Bash(git status:*)",
+      "Bash(git -C \"C:\\\\Users\\\\omar_\\\\Documents\\\\gasledger\" status --short)",
+      "Bash(python:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

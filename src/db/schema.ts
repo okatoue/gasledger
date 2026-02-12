@@ -81,6 +81,29 @@ export const CREATE_TABLES_SQL: string[] = [
     accuracy_m REAL,
     speed_mps REAL
   );`,
+
+  `CREATE TABLE IF NOT EXISTS sync_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    record_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );`,
+
+  `CREATE TABLE IF NOT EXISTS home_stations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    place_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    address TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    cached_prices TEXT,
+    prices_updated_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(user_id)
+  );`,
 ];
 
 export const CREATE_INDEXES_SQL: string[] = [
@@ -91,4 +114,5 @@ export const CREATE_INDEXES_SQL: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_tracking_gaps_session_id ON tracking_gaps(session_id);`,
   `CREATE INDEX IF NOT EXISTS idx_route_points_session_id ON route_points(session_id);`,
   `CREATE INDEX IF NOT EXISTS idx_route_points_timestamp ON route_points(timestamp);`,
+  `CREATE INDEX IF NOT EXISTS idx_home_stations_user_id ON home_stations(user_id);`,
 ];

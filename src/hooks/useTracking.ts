@@ -2,10 +2,12 @@ import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { trackingService } from '@/services/tracking/trackingService';
 import { sessionRepository } from '@/db/repositories/sessionRepository';
+import { lastPriceRepository } from '@/db/repositories/lastPriceRepository';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useLocationPermission } from './useLocationPermission';
 import { metersToMiles } from '@/services/fuel/unitConverter';
+import { syncService } from '@/services/sync/syncService';
 
 interface StartTrackingInput {
   userId: string;
@@ -21,6 +23,7 @@ export function useTracking() {
   const { hasPermission, requestForeground, requestBackground } = useLocationPermission();
   const { setActiveSession, setTracking, reset } = useSessionStore();
   const routeStorageEnabled = useSettingsStore((s) => s.routeStorageEnabled);
+  const locationMode = useSettingsStore((s) => s.locationMode);
 
   const startTracking = useCallback(
     async (input: StartTrackingInput) => {
@@ -32,8 +35,10 @@ export function useTracking() {
         }
       }
 
-      // Attempt background (non-blocking — limited mode is acceptable)
-      await requestBackground().catch(() => {});
+      // Request background permission only if Full mode
+      if (locationMode === 'full') {
+        await requestBackground().catch(() => {});
+      }
 
       // 2. Create session in DB
       const sessionId = await sessionRepository.create({
@@ -58,7 +63,7 @@ export function useTracking() {
 
       return { success: true as const, sessionId };
     },
-    [hasPermission, requestForeground, requestBackground, routeStorageEnabled, setActiveSession, setTracking],
+    [hasPermission, requestForeground, requestBackground, routeStorageEnabled, locationMode, setActiveSession, setTracking],
   );
 
   const stopTracking = useCallback(
@@ -82,6 +87,21 @@ export function useTracking() {
         estCost,
         routePointsCount: totals.routePointCount,
       });
+
+      // 3b. Save last price for this vehicle/grade
+      const completedSession = await sessionRepository.getById(sessionId);
+      if (completedSession && completedSession.gas_price_value != null) {
+        await lastPriceRepository.upsert(
+          completedSession.vehicle_id,
+          completedSession.fuel_grade,
+          completedSession.gas_price_value,
+          completedSession.gas_price_unit ?? 'per_gal',
+          completedSession.gas_price_currency ?? 'usd',
+        );
+      }
+
+      // 3c. Sync to Supabase (fire-and-forget)
+      syncService.syncSession(sessionId).catch(() => {});
 
       // 4. Reset store
       setTracking(false);

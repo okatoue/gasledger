@@ -8,6 +8,7 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
@@ -62,6 +63,7 @@ export default function DropdownPicker({
 
   const handleOpen = () => {
     if (disabled || loading) return;
+    Keyboard.dismiss();
     setSearch('');
     setVisible(true);
   };

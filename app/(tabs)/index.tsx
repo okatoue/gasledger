@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  ScrollView,
   Modal,
   TextInput,
   Alert,
@@ -16,8 +18,20 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
 import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
-import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
+import { metersToMiles } from '@/services/fuel/unitConverter';
 import { useTracking } from '@/hooks/useTracking';
+import { useGasPrice } from '@/hooks/useGasPrice';
+import { useHomeStation } from '@/hooks/useHomeStation';
+import { useNearbyStations } from '@/hooks/useNearbyStations';
+import { sessionRepository } from '@/db/repositories/sessionRepository';
+import { lastPriceRepository } from '@/db/repositories/lastPriceRepository';
+import { formatDurationTimer, formatDistance, formatCurrency } from '@/utils/formatting';
+import { FUEL_GRADES } from '@/utils/fuelGrades';
+import { env } from '@/config/env';
+import LocationModeModal from '@/components/session/LocationModeModal';
+import NearbyStationsBar from '@/components/station/NearbyStationsBar';
+import { useStationStore } from '@/stores/stationStore';
+import { useLocationPermission } from '@/hooks/useLocationPermission';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -28,24 +42,6 @@ function calculateTripCost(distanceM: number, efficiencyMpg: number, gasPricePer
   const miles = metersToMiles(distanceM);
   const gallonsUsed = miles / efficiencyMpg;
   return gallonsUsed * gasPricePerGal;
-}
-
-// ─── Helpers ───
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function formatDistance(meters: number, unit: 'mi' | 'km'): string {
-  const value = unit === 'mi' ? metersToMiles(meters) : metersToKm(meters);
-  return `${value.toFixed(1)} ${unit}`;
-}
-
-function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -61,6 +57,17 @@ function ParkedDashboard({
   volumeUnit,
   monthlySpend,
   monthlyDistance,
+  selectedFuelGrade,
+  onChangeFuelGrade,
+  homeStationName,
+  priceSource,
+  hasApiKey,
+  stations,
+  stationsLoading,
+  stationsError,
+  homeStationPlaceId,
+  onSelectStationPrice,
+  onToggleHome,
 }: {
   onStartDrive: () => void;
   gasPrice: number;
@@ -71,9 +78,25 @@ function ParkedDashboard({
   volumeUnit: 'gal' | 'l';
   monthlySpend: number;
   monthlyDistance: number;
+  selectedFuelGrade: string;
+  onChangeFuelGrade: (grade: string) => void;
+  homeStationName: string | null;
+  priceSource: string;
+  hasApiKey: boolean;
+  stations: import('@/services/places/placesService').GasStation[];
+  stationsLoading: boolean;
+  stationsError: string | null;
+  homeStationPlaceId: string | null;
+  onSelectStationPrice: (price: number) => void;
+  onToggleHome: (station: import('@/services/places/placesService').GasStation) => void;
 }) {
   const [priceText, setPriceText] = useState(gasPrice.toFixed(3));
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Sync displayed price when the hook returns a different price (e.g. grade changed)
+  useEffect(() => {
+    setPriceText(gasPrice.toFixed(3));
+  }, [gasPrice]);
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -87,7 +110,7 @@ function ParkedDashboard({
   }, [pulseAnim]);
 
   return (
-    <View style={[styles.scrollView, styles.parkedContent]}>
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.parkedContent} showsVerticalScrollIndicator={false}>
       {/* A. Active Vehicle Card */}
       <TouchableOpacity style={styles.vehicleCard} activeOpacity={0.7} onPress={onSelectVehicle}>
         <View style={styles.vehicleInfo}>
@@ -101,6 +124,23 @@ function ParkedDashboard({
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
+
+      {/* Fuel Grade Picker */}
+      <View style={styles.fuelGradeRow}>
+        {FUEL_GRADES.map((g) => (
+          <TouchableOpacity
+            key={g.value}
+            style={[styles.fuelGradePill, selectedFuelGrade === g.value && styles.fuelGradePillActive]}
+            onPress={() => onChangeFuelGrade(g.value)}
+          >
+            <Text
+              style={[styles.fuelGradePillText, selectedFuelGrade === g.value && styles.fuelGradePillTextActive]}
+            >
+              {g.text}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* B. Gas Price Widget */}
       <View style={styles.priceWidget}>
@@ -135,6 +175,23 @@ function ParkedDashboard({
           <Text style={styles.priceUnit}>/{volumeUnit}</Text>
         </View>
       </View>
+      {priceSource === 'home_station' && homeStationName && (
+        <Text style={styles.homeStationHint}>{homeStationName}</Text>
+      )}
+
+      {/* Nearby Stations Bar */}
+      {hasApiKey && (
+        <NearbyStationsBar
+          stations={stations}
+          isLoading={stationsLoading}
+          error={stationsError}
+          selectedFuelGrade={selectedFuelGrade}
+          distanceUnit={distanceUnit}
+          homeStationPlaceId={homeStationPlaceId}
+          onSelectPrice={onSelectStationPrice}
+          onToggleHome={onToggleHome}
+        />
+      )}
 
       {/* D. Quick Stats Strip */}
       <View style={styles.statsStrip}>
@@ -159,7 +216,7 @@ function ParkedDashboard({
         </Animated.View>
       </View>
 
-    </View>
+    </ScrollView>
   );
 }
 
@@ -175,7 +232,7 @@ function ActiveDashboard({
   vehicle: Vehicle;
   gasPrice: number;
 }) {
-  const { distanceM, elapsedSeconds, gpsSignal, isTracking } = useSessionStore();
+  const { distanceM, elapsedSeconds, gpsSignal, isTracking, isTrackingPaused } = useSessionStore();
   const updateStats = useSessionStore((s) => s.updateStats);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
 
@@ -234,6 +291,14 @@ function ActiveDashboard({
         <Text style={[styles.gpsText, { color: gpsColor }]}>{gpsLabel}</Text>
       </View>
 
+      {/* Tracking Paused Banner */}
+      {isTrackingPaused && (
+        <View style={styles.pausedBanner}>
+          <Ionicons name="pause-circle" size={18} color="#92400E" />
+          <Text style={styles.pausedBannerText}>Tracking Paused — GPS signal gap detected</Text>
+        </View>
+      )}
+
       {/* Vehicle context */}
       <Text style={styles.activeVehicle}>
         {vehicle.year} {vehicle.make} {vehicle.model}
@@ -255,7 +320,7 @@ function ActiveDashboard({
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
           <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
-          <Text style={styles.metricValue}>{formatDuration(elapsedSeconds)}</Text>
+          <Text style={styles.metricValue}>{formatDurationTimer(elapsedSeconds)}</Text>
           <Text style={styles.metricLabel}>Duration</Text>
         </View>
       </View>
@@ -341,29 +406,86 @@ export default function DashboardScreen() {
   const volumeUnit = useSettingsStore((s) => s.volumeUnit);
   const session = useAuthStore((s) => s.session);
   const { startTracking, stopTracking } = useTracking();
+  const locationMode = useSettingsStore((s) => s.locationMode);
+  const setLocationMode = useSettingsStore((s) => s.setLocationMode);
+  const { requestBackground } = useLocationPermission();
 
-  const [gasPrice, setGasPrice] = useState(3.5);
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
+  const [locationModeModalVisible, setLocationModeModalVisible] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [selectedFuelGrade, setSelectedFuelGrade] = useState<string>('regular');
+  const [monthlySpend, setMonthlySpend] = useState(0);
+  const [monthlyDistance, setMonthlyDistance] = useState(0);
+
+  const hasApiKey = !!env.GOOGLE_PLACES_API_KEY;
+  const homeStation = useHomeStation(session?.user.id);
+  const nearbyStations = useNearbyStations();
+
+  const pendingSelection = useStationStore((s) => s.pendingSelection);
+  const clearPendingSelection = useStationStore((s) => s.clearPendingSelection);
+
+  // Refresh home station prices on mount if stale
+  useEffect(() => {
+    if (homeStation.isLoaded && homeStation.homeStation) {
+      homeStation.refreshPrice();
+    }
+  }, [homeStation.isLoaded]);
+
+  // Auto-fetch nearby stations on mount
+  useEffect(() => {
+    if (hasApiKey) nearbyStations.refresh();
+  }, [hasApiKey]);
+
+  const homeStationPrice = homeStation.getPriceForGrade(selectedFuelGrade);
+
+  const { gasPrice, setGasPrice, priceSource } = useGasPrice(
+    selectedVehicle?.id ?? null,
+    selectedFuelGrade,
+    homeStationPrice,
+  );
 
   useEffect(() => {
     if (!session) return;
     vehicleService.getByUser(session.user.id).then((data) => {
       setVehicles(data);
-      if (data.length > 0) setSelectedVehicle(data[0]);
+      if (data.length > 0) {
+        setSelectedVehicle(data[0]);
+        setSelectedFuelGrade(data[0].default_fuel_grade || 'regular');
+      }
     });
   }, [session]);
+
+  // Reset fuel grade when vehicle changes
+  useEffect(() => {
+    if (selectedVehicle) {
+      setSelectedFuelGrade(selectedVehicle.default_fuel_grade || 'regular');
+    }
+  }, [selectedVehicle?.id]);
+
+  useEffect(() => {
+    if (!session) return;
+    sessionRepository.getMonthlyStats(session.user.id).then((stats) => {
+      setMonthlySpend(stats.totalSpend);
+      setMonthlyDistance(stats.totalDistanceM);
+    });
+  }, [session, activeSessionId]);
 
   const isActive = !!activeSessionId;
 
   const handleStartDrive = async () => {
     if (!selectedVehicle || !session) return;
 
+    // Show location mode modal if user hasn't chosen yet
+    if (locationMode === null) {
+      setLocationModeModalVisible(true);
+      return;
+    }
+
     const result = await startTracking({
       userId: session.user.id,
       vehicleId: selectedVehicle.id,
-      fuelGrade: selectedVehicle.default_fuel_grade,
+      fuelGrade: selectedFuelGrade,
       gasPriceValue: gasPrice,
       gasPriceUnit: volumeUnit === 'gal' ? 'per_gal' : 'per_l',
       gasPriceCurrency: 'usd',
@@ -376,6 +498,48 @@ export default function DashboardScreen() {
       );
     }
   };
+
+  const handleLocationModeSelected = async (mode: 'full' | 'limited') => {
+    setLocationMode(mode);
+    setLocationModeModalVisible(false);
+    // Proceed to start drive after mode selection
+    if (!selectedVehicle || !session) return;
+    const result = await startTracking({
+      userId: session.user.id,
+      vehicleId: selectedVehicle.id,
+      fuelGrade: selectedFuelGrade,
+      gasPriceValue: gasPrice,
+      gasPriceUnit: volumeUnit === 'gal' ? 'per_gal' : 'per_l',
+      gasPriceCurrency: 'usd',
+    });
+    if (!result.success) {
+      Alert.alert(
+        'Location Permission Required',
+        'GasLedger needs location access to track your driving session. Please enable it in Settings.',
+      );
+    }
+  };
+
+  const handleChangePrice = (price: number) => {
+    setGasPrice(price);
+    if (selectedVehicle) {
+      lastPriceRepository.upsert(
+        selectedVehicle.id,
+        selectedFuelGrade,
+        price,
+        volumeUnit === 'gal' ? 'per_gal' : 'per_l',
+        'usd',
+      ).catch(() => {});
+    }
+  };
+
+  // Consume pending price selection from map
+  useEffect(() => {
+    if (pendingSelection) {
+      handleChangePrice(pendingSelection.price);
+      clearPendingSelection();
+    }
+  }, [pendingSelection]);
 
   const handleStopDrive = async () => {
     if (!selectedVehicle) return;
@@ -400,13 +564,30 @@ export default function DashboardScreen() {
         <ParkedDashboard
           onStartDrive={handleStartDrive}
           gasPrice={gasPrice}
-          onChangePrice={setGasPrice}
+          onChangePrice={handleChangePrice}
           onSelectVehicle={() => setVehicleModalVisible(true)}
           vehicle={selectedVehicle}
           distanceUnit={distanceUnit}
           volumeUnit={volumeUnit}
-          monthlySpend={0}
-          monthlyDistance={0}
+          monthlySpend={monthlySpend}
+          monthlyDistance={monthlyDistance}
+          selectedFuelGrade={selectedFuelGrade}
+          onChangeFuelGrade={setSelectedFuelGrade}
+          homeStationName={homeStation.homeStation?.name ?? null}
+          priceSource={priceSource}
+          hasApiKey={hasApiKey}
+          stations={nearbyStations.stations}
+          stationsLoading={nearbyStations.isLoading}
+          stationsError={nearbyStations.error}
+          homeStationPlaceId={homeStation.homeStation?.place_id ?? null}
+          onSelectStationPrice={handleChangePrice}
+          onToggleHome={(station) => {
+            if (station.placeId === homeStation.homeStation?.place_id) {
+              homeStation.removeHome();
+            } else {
+              homeStation.setHome(station);
+            }
+          }}
         />
       )}
 
@@ -419,6 +600,13 @@ export default function DashboardScreen() {
           setVehicleModalVisible(false);
         }}
         onClose={() => setVehicleModalVisible(false)}
+      />
+
+      <LocationModeModal
+        visible={locationModeModalVisible}
+        onSelect={handleLocationModeSelected}
+        onClose={() => setLocationModeModalVisible(false)}
+        requestBackgroundPermission={requestBackground}
       />
 
     </SafeAreaView>
@@ -469,10 +657,31 @@ const styles = StyleSheet.create({
   },
   priceLeft: { flexDirection: 'row', alignItems: 'center' },
   priceLabel: { ...typography.label, color: colors.textSecondary, marginLeft: 8 },
+  homeStationHint: { ...typography.caption, color: colors.primary, marginTop: -spacing.md, marginBottom: spacing.md, marginLeft: spacing.xs },
   priceRight: { flexDirection: 'row', alignItems: 'center' },
   priceCurrency: { ...typography.h3, color: colors.text },
   priceInput: { ...typography.h3, color: colors.text, width: 62, padding: 0, textAlign: 'center', marginBottom: 2 },
   priceUnit: { ...typography.h3, color: colors.text },
+
+  // ── Fuel Grade Picker ──
+  fuelGradeRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: borderRadius.md,
+    padding: 3,
+    marginBottom: spacing.md,
+  },
+  fuelGradePill: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderRadius: borderRadius.md - 2,
+  },
+  fuelGradePillActive: {
+    backgroundColor: colors.primary,
+  },
+  fuelGradePillText: { ...typography.button, color: colors.textSecondary, fontSize: 13 },
+  fuelGradePillTextActive: { color: colors.white },
 
   // ── Quick Stats ──
   statsStrip: {
@@ -528,6 +737,24 @@ const styles = StyleSheet.create({
   },
   gpsDot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
   gpsText: { ...typography.caption, fontWeight: '600' },
+
+  // ── Tracking Paused Banner ──
+  pausedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    gap: 8,
+  },
+  pausedBannerText: {
+    ...typography.caption,
+    color: '#92400E',
+    fontWeight: '600',
+    flex: 1,
+  },
 
   // ── Active Vehicle ──
   activeVehicle: {

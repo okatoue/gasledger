@@ -4,20 +4,25 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { vehicleService } from '@/services/vehicle/vehicleService';
 import { useAuthStore } from '@/stores/authStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useLocationPermission } from '@/hooks/useLocationPermission';
 import { supabase } from '@/config/supabase';
 import { decodeVin, VinResult } from '@/services/vehicle/vinDecoder';
 import { useFuelEconomyLookup } from '@/hooks/useFuelEconomyLookup';
@@ -27,6 +32,7 @@ import DropdownPicker from '@/components/common/Select';
 type Tab = 'scan' | 'manual';
 
 export default function OnboardingScreen() {
+  const [step, setStep] = useState<2 | 3>(2);
   const [activeTab, setActiveTab] = useState<Tab>('scan');
   const [vin, setVin] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -35,6 +41,15 @@ export default function OnboardingScreen() {
   const [vinError, setVinError] = useState('');
   const session = useAuthStore((s) => s.session);
   const setNeedsOnboarding = useAuthStore((s) => s.setNeedsOnboarding);
+  const setRouteStorageEnabled = useSettingsStore((s) => s.setRouteStorageEnabled);
+  const setLocationMode = useSettingsStore((s) => s.setLocationMode);
+  const routeStorageEnabled = useSettingsStore((s) => s.routeStorageEnabled);
+  const { requestBackground } = useLocationPermission();
+
+  // Step 3 state
+  const [step3RouteStorage, setStep3RouteStorage] = useState(true);
+  const [step3LocationMode, setStep3LocationMode] = useState<'full' | 'limited'>('full');
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const fuelLookup = useFuelEconomyLookup();
 
@@ -85,25 +100,20 @@ export default function OnboardingScreen() {
     : fuelLookup.vehicleDetails !== null;
 
   const handleSave = async () => {
-    console.log('[DEBUG handleSave] PRESSED');
     // Use store session, but fall back to a fresh Supabase session if store is stale
     const currentSession = session ?? (await supabase.auth.getSession()).data.session;
     if (!currentSession) {
-      console.log('[DEBUG handleSave] NO SESSION — returning early');
       Alert.alert('Session Expired', 'Please sign in again.');
       return;
     }
     setIsSaving(true);
     try {
       if (activeTab === 'scan') {
-        console.log('[DEBUG handleSave] scan path — decoding VIN');
         const decoded = vinResult ?? await decodeVin(vin);
         if (!decoded) {
-          console.log('[DEBUG handleSave] VIN decode failed');
           Alert.alert('Error', 'Could not decode VIN. Try entering details manually.');
           return;
         }
-        console.log('[DEBUG handleSave] creating vehicle (VIN)');
         await vehicleService.create({
           user_id: currentSession.user.id,
           vin,
@@ -114,9 +124,7 @@ export default function OnboardingScreen() {
         });
       } else {
         const details = fuelLookup.vehicleDetails!;
-        console.log('[DEBUG handleSave] manual path — details:', JSON.stringify(details));
         const { fuelType, fuelGrade } = normalizeFuelInfo(details.fuelType1);
-        console.log('[DEBUG handleSave] creating vehicle (manual):', { make: details.make, model: details.model, year: details.year, fuelType, fuelGrade });
         await vehicleService.create({
           user_id: currentSession.user.id,
           make: details.make,
@@ -129,223 +137,329 @@ export default function OnboardingScreen() {
           efficiency_source: 'fueleconomy.gov',
         });
       }
-      console.log('[DEBUG handleSave] vehicle created — calling setNeedsOnboarding(false)');
-      setNeedsOnboarding(false);
+      setStep(3);
     } catch (error) {
-      console.log('[DEBUG handleSave] ERROR:', error);
       Alert.alert('Error', 'Failed to save vehicle. Please try again.');
     } finally {
-      console.log('[DEBUG handleSave] FINALLY — setting isSaving false');
       setIsSaving(false);
     }
   };
 
+  const handleFinishOnboarding = async () => {
+    setIsFinishing(true);
+    try {
+      setRouteStorageEnabled(step3RouteStorage);
+      setLocationMode(step3LocationMode);
+      if (step3LocationMode === 'full') {
+        await requestBackground().catch(() => {});
+      }
+      setNeedsOnboarding(false);
+    } catch (error) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.progressBar}>
               <View style={[styles.progressStep, styles.activeStep]} />
               <View style={[styles.progressStep, styles.activeStep]} />
-              <View style={styles.progressStep} />
+              <View style={[styles.progressStep, step === 3 && styles.activeStep]} />
             </View>
-            <Text style={styles.title}>Let's set up your ride.</Text>
-            <Text style={styles.subtitle}>
-              We need your vehicle details to calculate your exact gas mileage.
-            </Text>
+            {step === 2 ? (
+              <>
+                <Text style={styles.title}>Let's set up your ride.</Text>
+                <Text style={styles.subtitle}>
+                  We need your vehicle details to calculate your exact gas mileage.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>Almost done!</Text>
+                <Text style={styles.subtitle}>
+                  Choose your privacy and tracking preferences.
+                </Text>
+              </>
+            )}
           </View>
 
-          {/* Option 1: VIN */}
-          <View style={[styles.card, activeTab === 'scan' && styles.activeCard]}>
-            <TouchableOpacity
-              style={styles.cardHeader}
-              onPress={() => setActiveTab('scan')}
-            >
-              <View style={styles.radioCircle}>
-                {activeTab === 'scan' && <View style={styles.selectedRb} />}
-              </View>
-              <Text style={styles.cardTitle}>Use VIN Number</Text>
-            </TouchableOpacity>
-
-            {activeTab === 'scan' && (
-              <View style={styles.cardBody}>
-                <TouchableOpacity style={styles.cameraButton}>
-                  <Ionicons name="camera-outline" size={24} color={colors.white} />
-                  <Text style={styles.cameraButtonText}>Scan Barcode</Text>
+          {step === 2 ? (
+            <>
+              {/* Option 1: VIN */}
+              <View style={[styles.card, activeTab === 'scan' && styles.activeCard]}>
+                <TouchableOpacity
+                  style={styles.cardHeader}
+                  onPress={() => setActiveTab('scan')}
+                >
+                  <View style={styles.radioCircle}>
+                    {activeTab === 'scan' && <View style={styles.selectedRb} />}
+                  </View>
+                  <Text style={styles.cardTitle}>Use VIN Number</Text>
                 </TouchableOpacity>
 
-                <View style={styles.divider}>
-                  <Text style={styles.dividerText}>OR TYPE MANUALLY</Text>
-                </View>
+                {activeTab === 'scan' && (
+                  <View style={styles.cardBody}>
+                    <TouchableOpacity style={styles.cameraButton}>
+                      <Ionicons name="camera-outline" size={24} color={colors.white} />
+                      <Text style={styles.cameraButtonText}>Scan Barcode</Text>
+                    </TouchableOpacity>
 
-                <Text style={styles.label}>Vehicle Identification Number (VIN)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 1HGCM..."
-                  placeholderTextColor={colors.textTertiary}
-                  value={vin}
-                  onChangeText={handleVinChange}
-                  maxLength={17}
-                  autoCorrect={false}
-                  autoCapitalize="characters"
-                />
-                <Text style={styles.helperText}>
-                  {vin.length}/17 characters
-                </Text>
+                    <View style={styles.divider}>
+                      <Text style={styles.dividerText}>OR TYPE MANUALLY</Text>
+                    </View>
 
-                {isDecoding && (
-                  <View style={styles.decodeStatus}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.decodeStatusText}>Decoding VIN...</Text>
+                    <Text style={styles.label}>Vehicle Identification Number (VIN)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. 1HGCM..."
+                      placeholderTextColor={colors.textTertiary}
+                      value={vin}
+                      onChangeText={handleVinChange}
+                      maxLength={17}
+                      autoCorrect={false}
+                      autoCapitalize="characters"
+                    />
+                    <Text style={styles.helperText}>
+                      {vin.length}/17 characters
+                    </Text>
+
+                    {isDecoding && (
+                      <View style={styles.decodeStatus}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.decodeStatusText}>Decoding VIN...</Text>
+                      </View>
+                    )}
+
+                    {vinError !== '' && (
+                      <View style={styles.decodeStatus}>
+                        <Ionicons name="alert-circle" size={18} color={colors.error} />
+                        <Text style={[styles.decodeStatusText, { color: colors.error }]}>{vinError}</Text>
+                      </View>
+                    )}
+
+                    {vinResult && (
+                      <View style={styles.vinResultCard}>
+                        <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                        <View style={{ marginLeft: 10, flex: 1 }}>
+                          <Text style={styles.vinResultTitle}>
+                            {vinResult.year} {vinResult.make} {vinResult.model}
+                          </Text>
+                          <Text style={styles.vinResultSub}>
+                            Fuel: {vinResult.fuelType}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )}
+              </View>
 
-                {vinError !== '' && (
-                  <View style={styles.decodeStatus}>
-                    <Ionicons name="alert-circle" size={18} color={colors.error} />
-                    <Text style={[styles.decodeStatusText, { color: colors.error }]}>{vinError}</Text>
+              {/* Option 2: Manual Entry */}
+              <View style={[styles.card, activeTab === 'manual' && styles.activeCard]}>
+                <TouchableOpacity
+                  style={styles.cardHeader}
+                  onPress={() => setActiveTab('manual')}
+                >
+                  <View style={styles.radioCircle}>
+                    {activeTab === 'manual' && <View style={styles.selectedRb} />}
+                  </View>
+                  <Text style={styles.cardTitle}>Enter Make & Model</Text>
+                </TouchableOpacity>
+
+                {activeTab === 'manual' && (
+                  <View style={styles.cardBody}>
+                    {/* Year — full width */}
+                    <Text style={styles.label}>Year</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="2024"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      value={fuelLookup.year}
+                      onChangeText={handleYearChange}
+                    />
+
+                    {/* Make dropdown */}
+                    <DropdownPicker
+                      label="Make"
+                      placeholder="Select make..."
+                      items={fuelLookup.makes}
+                      selectedValue={fuelLookup.selectedMake?.value ?? null}
+                      onSelect={fuelLookup.selectMake}
+                      disabled={fuelLookup.makes.length === 0 && !fuelLookup.makeLoading}
+                      loading={fuelLookup.makeLoading}
+                      error={fuelLookup.makeError}
+                    />
+
+                    {/* Model dropdown */}
+                    <DropdownPicker
+                      label="Model"
+                      placeholder="Select model..."
+                      items={fuelLookup.models}
+                      selectedValue={fuelLookup.selectedModel?.value ?? null}
+                      onSelect={fuelLookup.selectModel}
+                      disabled={fuelLookup.selectedMake === null && !fuelLookup.modelLoading}
+                      loading={fuelLookup.modelLoading}
+                      error={fuelLookup.modelError}
+                    />
+
+                    {/* Trim / Engine dropdown */}
+                    <DropdownPicker
+                      label="Trim / Engine"
+                      placeholder="Select trim..."
+                      items={fuelLookup.options}
+                      selectedValue={fuelLookup.selectedOption?.value ?? null}
+                      onSelect={fuelLookup.selectOption}
+                      disabled={fuelLookup.selectedModel === null && !fuelLookup.optionLoading}
+                      loading={fuelLookup.optionLoading}
+                      error={fuelLookup.optionError}
+                    />
+
+                    {/* Vehicle details confirmation card */}
+                    {fuelLookup.detailLoading && (
+                      <View style={styles.decodeStatus}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.decodeStatusText}>Loading vehicle data...</Text>
+                      </View>
+                    )}
+
+                    {fuelLookup.detailError !== '' && (
+                      <View style={styles.decodeStatus}>
+                        <Ionicons name="alert-circle" size={18} color={colors.error} />
+                        <Text style={[styles.decodeStatusText, { color: colors.error }]}>
+                          {fuelLookup.detailError}
+                        </Text>
+                      </View>
+                    )}
+
+                    {fuelLookup.vehicleDetails && (
+                      <View style={styles.vinResultCard}>
+                        <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                        <View style={{ marginLeft: 10, flex: 1 }}>
+                          <Text style={styles.vinResultTitle}>
+                            {fuelLookup.vehicleDetails.year} {fuelLookup.vehicleDetails.make}{' '}
+                            {fuelLookup.vehicleDetails.model}
+                          </Text>
+                          <Text style={styles.vinResultSub}>
+                            Combined: {fuelLookup.vehicleDetails.comb08} MPG {'  '}
+                            {normalizeFuelInfo(fuelLookup.vehicleDetails.fuelType1).fuelType}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )}
-
-                {vinResult && (
-                  <View style={styles.vinResultCard}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                      <Text style={styles.vinResultTitle}>
-                        {vinResult.year} {vinResult.make} {vinResult.model}
-                      </Text>
-                      <Text style={styles.vinResultSub}>
-                        Fuel: {vinResult.fuelType}
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Step 3: Route Storage + Location Mode */}
+              <View style={styles.card}>
+                <View style={styles.step3ToggleRow}>
+                  <View style={styles.step3ToggleInfo}>
+                    <Ionicons name="navigate-outline" size={20} color={colors.primary} />
+                    <View style={styles.step3ToggleTextWrapper}>
+                      <Text style={styles.step3ToggleLabel}>Route Storage</Text>
+                      <Text style={styles.step3ToggleHint}>
+                        Save GPS route points with each session for detailed trip maps
                       </Text>
                     </View>
                   </View>
-                )}
+                  <Switch
+                    value={step3RouteStorage}
+                    onValueChange={setStep3RouteStorage}
+                    trackColor={{ false: colors.border, true: colors.primaryLight }}
+                    thumbColor={step3RouteStorage ? colors.primary : colors.textTertiary}
+                  />
+                </View>
               </View>
-            )}
-          </View>
 
-          {/* Option 2: Manual Entry */}
-          <View style={[styles.card, activeTab === 'manual' && styles.activeCard]}>
-            <TouchableOpacity
-              style={styles.cardHeader}
-              onPress={() => setActiveTab('manual')}
-            >
-              <View style={styles.radioCircle}>
-                {activeTab === 'manual' && <View style={styles.selectedRb} />}
-              </View>
-              <Text style={styles.cardTitle}>Enter Make & Model</Text>
-            </TouchableOpacity>
+              <Text style={styles.step3SectionLabel}>Location Tracking Mode</Text>
 
-            {activeTab === 'manual' && (
-              <View style={styles.cardBody}>
-                {/* Year — full width */}
-                <Text style={styles.label}>Year</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2024"
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="numeric"
-                  maxLength={4}
-                  value={fuelLookup.year}
-                  onChangeText={handleYearChange}
-                />
-
-                {/* Make dropdown */}
-                <DropdownPicker
-                  label="Make"
-                  placeholder="Select make..."
-                  items={fuelLookup.makes}
-                  selectedValue={fuelLookup.selectedMake?.value ?? null}
-                  onSelect={fuelLookup.selectMake}
-                  disabled={fuelLookup.makes.length === 0 && !fuelLookup.makeLoading}
-                  loading={fuelLookup.makeLoading}
-                  error={fuelLookup.makeError}
-                />
-
-                {/* Model dropdown */}
-                <DropdownPicker
-                  label="Model"
-                  placeholder="Select model..."
-                  items={fuelLookup.models}
-                  selectedValue={fuelLookup.selectedModel?.value ?? null}
-                  onSelect={fuelLookup.selectModel}
-                  disabled={fuelLookup.selectedMake === null && !fuelLookup.modelLoading}
-                  loading={fuelLookup.modelLoading}
-                  error={fuelLookup.modelError}
-                />
-
-                {/* Trim / Engine dropdown */}
-                <DropdownPicker
-                  label="Trim / Engine"
-                  placeholder="Select trim..."
-                  items={fuelLookup.options}
-                  selectedValue={fuelLookup.selectedOption?.value ?? null}
-                  onSelect={fuelLookup.selectOption}
-                  disabled={fuelLookup.selectedModel === null && !fuelLookup.optionLoading}
-                  loading={fuelLookup.optionLoading}
-                  error={fuelLookup.optionError}
-                />
-
-                {/* Vehicle details confirmation card */}
-                {fuelLookup.detailLoading && (
-                  <View style={styles.decodeStatus}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.decodeStatusText}>Loading vehicle data...</Text>
+              <TouchableOpacity
+                style={[styles.card, step3LocationMode === 'full' && styles.activeCard]}
+                onPress={() => setStep3LocationMode('full')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={styles.radioCircle}>
+                    {step3LocationMode === 'full' && <View style={styles.selectedRb} />}
                   </View>
-                )}
-
-                {fuelLookup.detailError !== '' && (
-                  <View style={styles.decodeStatus}>
-                    <Ionicons name="alert-circle" size={18} color={colors.error} />
-                    <Text style={[styles.decodeStatusText, { color: colors.error }]}>
-                      {fuelLookup.detailError}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.cardTitle}>Full Tracking</Text>
+                      <View style={styles.recommendedBadge}>
+                        <Text style={styles.recommendedText}>Recommended</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.step3OptionDesc}>
+                      Tracks your drive reliably in the background, even when the screen is off
                     </Text>
                   </View>
-                )}
+                </View>
+              </TouchableOpacity>
 
-                {fuelLookup.vehicleDetails && (
-                  <View style={styles.vinResultCard}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                      <Text style={styles.vinResultTitle}>
-                        {fuelLookup.vehicleDetails.year} {fuelLookup.vehicleDetails.make}{' '}
-                        {fuelLookup.vehicleDetails.model}
-                      </Text>
-                      <Text style={styles.vinResultSub}>
-                        Combined: {fuelLookup.vehicleDetails.comb08} MPG {'  '}
-                        {normalizeFuelInfo(fuelLookup.vehicleDetails.fuelType1).fuelType}
-                      </Text>
-                    </View>
+              <TouchableOpacity
+                style={[styles.card, step3LocationMode === 'limited' && styles.activeCard]}
+                onPress={() => setStep3LocationMode('limited')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={styles.radioCircle}>
+                    {step3LocationMode === 'limited' && <View style={styles.selectedRb} />}
                   </View>
-                )}
-              </View>
-            )}
-          </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>Limited Mode</Text>
+                    <Text style={styles.step3OptionDesc}>
+                      May pause tracking when the app goes to the background
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
 
         {/* Sticky Footer */}
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.primaryButton, (!isFormValid || isSaving) && styles.disabledButton]}
-            disabled={!isFormValid || isSaving}
-            onPress={handleSave}
-          >
-            <Text style={styles.primaryButtonText}>{isSaving ? 'Saving...' : 'Save & Continue'}</Text>
-          </TouchableOpacity>
-        </View>
+        <SafeAreaView edges={['bottom']} style={styles.footer}>
+          {step === 2 ? (
+            <TouchableOpacity
+              style={[styles.primaryButton, (!isFormValid || isSaving) && styles.disabledButton]}
+              disabled={!isFormValid || isSaving}
+              onPress={handleSave}
+            >
+              <Text style={styles.primaryButtonText}>{isSaving ? 'Saving...' : 'Save & Continue'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.primaryButton, isFinishing && styles.disabledButton]}
+              disabled={isFinishing}
+              onPress={handleFinishOnboarding}
+            >
+              <Text style={styles.primaryButtonText}>{isFinishing ? 'Setting up...' : 'Get Started'}</Text>
+            </TouchableOpacity>
+          )}
+        </SafeAreaView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { padding: spacing.lg, paddingBottom: 100 },
+  scrollContent: { padding: spacing.lg, paddingBottom: spacing.lg },
 
   // Header
   header: { marginBottom: spacing.xl },
@@ -443,10 +557,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
   },
   primaryButton: {
     backgroundColor: colors.primary,
@@ -489,4 +599,24 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+
+  // Step 3 styles
+  step3ToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  step3ToggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.md },
+  step3ToggleTextWrapper: { marginLeft: spacing.sm + 2, flex: 1 },
+  step3ToggleLabel: { ...typography.label, color: colors.text },
+  step3ToggleHint: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  step3SectionLabel: { ...typography.label, color: colors.text, marginBottom: spacing.sm, marginTop: spacing.sm },
+  step3OptionDesc: { ...typography.caption, color: colors.textSecondary, marginTop: 4, marginLeft: 34 },
+  recommendedBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  recommendedText: { fontSize: 11, fontWeight: '600', color: colors.white },
 });

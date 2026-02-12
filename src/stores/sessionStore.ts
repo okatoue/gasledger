@@ -10,6 +10,7 @@ interface ActiveSessionState {
   elapsedSeconds: number;
   estimatedCost: number;
   gpsSignal: GpsSignal;
+  isTrackingPaused: boolean;
   setActiveSession: (id: string | null) => void;
   setTracking: (tracking: boolean) => void;
   updateStats: (stats: {
@@ -19,6 +20,7 @@ interface ActiveSessionState {
     estimatedCost?: number;
   }) => void;
   setGpsSignal: (signal: GpsSignal) => void;
+  setTrackingPaused: (paused: boolean) => void;
   reset: () => void;
 }
 
@@ -30,6 +32,7 @@ export const useSessionStore = create<ActiveSessionState>((set) => ({
   elapsedSeconds: 0,
   estimatedCost: 0,
   gpsSignal: 'good',
+  isTrackingPaused: false,
   setActiveSession: (id) => set({ activeSessionId: id }),
   setTracking: (isTracking) => set({ isTracking }),
   updateStats: (stats) =>
@@ -38,6 +41,7 @@ export const useSessionStore = create<ActiveSessionState>((set) => ({
       estimatedCost: stats.estimatedCost ?? state.estimatedCost,
     })),
   setGpsSignal: (gpsSignal) => set({ gpsSignal }),
+  setTrackingPaused: (isTrackingPaused) => set({ isTrackingPaused }),
   reset: () =>
     set({
       activeSessionId: null,
@@ -47,5 +51,6 @@ export const useSessionStore = create<ActiveSessionState>((set) => ({
       elapsedSeconds: 0,
       estimatedCost: 0,
       gpsSignal: 'good',
+      isTrackingPaused: false,
     }),
 }));

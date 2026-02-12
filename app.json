@@ -16,6 +16,9 @@
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyDNeies-vKb5QuB0B3dtypX7mEOw_U5zaE"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "GasLedger uses your location to track driving sessions and calculate distance traveled.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "GasLedger uses background location to continue tracking your driving session when the app is in the background.",
@@ -43,7 +46,12 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
-      "package": "com.okatoue.gasledger"
+      "package": "com.okatoue.gasledger",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDNeies-vKb5QuB0B3dtypX7mEOw_U5zaE"
+        }
+      }
     },
     "plugins": [
       "expo-router",

@@ -6,33 +6,29 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  SafeAreaView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
+import { trackingGapRepository } from '@/db/repositories/trackingGapRepository';
+import { syncService } from '@/services/sync/syncService';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
+import { formatDurationLabel } from '@/utils/formatting';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.round(seconds % 60);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
-
 export default function SessionSummaryScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
   const volumeUnit = useSettingsStore((s) => s.volumeUnit);
   const [session, setSession] = useState<Session | null>(null);
   const [notes, setNotes] = useState('');
+  const [gapCount, setGapCount] = useState(0);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -42,11 +38,17 @@ export default function SessionSummaryScreen() {
         setNotes(s.notes ?? '');
       }
     });
+    trackingGapRepository.getBySession(sessionId).then((gaps) => {
+      setGapCount(gaps.length);
+    });
   }, [sessionId]);
 
   const handleDone = async () => {
     if (sessionId && notes.trim()) {
       await sessionRepository.updateNotes(sessionId, notes.trim());
+    }
+    if (sessionId) {
+      syncService.syncSession(sessionId).catch(() => {});
     }
     router.replace('/(tabs)');
   };
@@ -63,8 +65,8 @@ export default function SessionSummaryScreen() {
   const fuelUnit = volumeUnit === 'gal' ? 'gal' : 'L';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 140 + insets.bottom }]}>
         {/* Header */}
         <View style={styles.header}>
           <Ionicons name="checkmark-circle" size={48} color={colors.success} />
@@ -86,12 +88,12 @@ export default function SessionSummaryScreen() {
           </View>
           <View style={styles.statCard}>
             <Ionicons name="time-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{formatDuration(durationSeconds)}</Text>
+            <Text style={styles.statValue}>{formatDurationLabel(durationSeconds)}</Text>
             <Text style={styles.statLabel}>Duration</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="pause-circle-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{formatDuration(session.stopped_seconds)}</Text>
+            <Text style={styles.statValue}>{formatDurationLabel(session.stopped_seconds)}</Text>
             <Text style={styles.statLabel}>Stopped</Text>
           </View>
           <View style={styles.statCard}>
@@ -119,6 +121,12 @@ export default function SessionSummaryScreen() {
               <Text style={styles.detailValue}>{session.route_points_count}</Text>
             </View>
           )}
+          {gapCount > 0 && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Tracking Gaps</Text>
+              <Text style={styles.detailValue}>{gapCount}</Text>
+            </View>
+          )}
         </View>
 
         {/* Notes */}
@@ -137,18 +145,18 @@ export default function SessionSummaryScreen() {
       </ScrollView>
 
       {/* Done button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: spacing.lg + insets.bottom }]}>
         <TouchableOpacity style={styles.doneButton} onPress={handleDone} activeOpacity={0.8}>
           <Text style={styles.doneButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: 100 },
+  content: { padding: spacing.lg },
 
   header: { alignItems: 'center', marginBottom: spacing.xl },
   title: { ...typography.h1, color: colors.text, marginTop: spacing.sm },

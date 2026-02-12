@@ -29,6 +29,7 @@ export function resetProcessor(): void {
 export function processLocationPoint(raw: RawLocationPoint): AcceptedPoint | null {
   // 1. Accuracy gate
   if (raw.accuracy === null || raw.accuracy > MIN_ACCURACY_M) {
+    console.log(`[GPS:Proc] REJECT accuracy — ${raw.accuracy?.toFixed(1) ?? 'null'}m > ${MIN_ACCURACY_M}m limit`);
     return null;
   }
 
@@ -41,6 +42,7 @@ export function processLocationPoint(raw: RawLocationPoint): AcceptedPoint | nul
   };
 
   if (!lastAcceptedPoint) {
+    console.log(`[GPS:Proc] First point accepted (acc: ${raw.accuracy.toFixed(1)}m)`);
     lastAcceptedPoint = point;
     return point;
   }
@@ -53,6 +55,7 @@ export function processLocationPoint(raw: RawLocationPoint): AcceptedPoint | nul
     point.longitude,
   );
   if (dist < MIN_DISTANCE_THRESHOLD_M) {
+    console.log(`[GPS:Proc] REJECT min-distance — ${dist.toFixed(2)}m < ${MIN_DISTANCE_THRESHOLD_M}m threshold`);
     return null;
   }
 
@@ -61,10 +64,12 @@ export function processLocationPoint(raw: RawLocationPoint): AcceptedPoint | nul
   if (timeDelta > 0) {
     const impliedSpeed = dist / timeDelta;
     if (impliedSpeed > MAX_SPEED_JUMP_MPS) {
+      console.log(`[GPS:Proc] REJECT speed-jump — ${impliedSpeed.toFixed(1)} m/s > ${MAX_SPEED_JUMP_MPS} m/s limit`);
       return null;
     }
   }
 
+  console.log(`[GPS:Proc] ACCEPT — dist: ${dist.toFixed(2)}m, acc: ${raw.accuracy.toFixed(1)}m, dt: ${timeDelta.toFixed(1)}s`);
   lastAcceptedPoint = point;
   return point;
 }

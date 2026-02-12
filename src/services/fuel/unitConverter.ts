@@ -32,3 +32,13 @@ export function metersToMiles(meters: number): number {
 export function metersToKm(meters: number): number {
   return meters / 1000;
 }
+
+export function convertFuelPrice(
+  price: number,
+  fromUnit: 'per_gal' | 'per_l',
+  toUnit: 'per_gal' | 'per_l',
+): number {
+  if (fromUnit === toUnit) return price;
+  if (fromUnit === 'per_gal' && toUnit === 'per_l') return price / LITERS_PER_GALLON;
+  return price * LITERS_PER_GALLON; // per_l → per_gal
+}

@@ -32,7 +32,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="vehicles"
         options={{
-          title: 'Vehicles',
+          headerShown: false,
           tabBarLabel: 'Vehicles',
           tabBarIcon: ({ color, size }) => <Ionicons name="car" size={size} color={color} />,
         }}
@@ -40,7 +40,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          headerShown: false,
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
         }}

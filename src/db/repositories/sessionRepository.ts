@@ -203,6 +203,18 @@ export const sessionRepository = {
     });
   },
 
+  async getMonthlyStats(userId: string): Promise<{ totalSpend: number; totalDistanceM: number }> {
+    const db = await getDatabase();
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const row = await db.getFirstAsync<{ totalSpend: number; totalDistanceM: number }>(
+      `SELECT COALESCE(SUM(est_cost), 0) as totalSpend, COALESCE(SUM(distance_m), 0) as totalDistanceM
+       FROM sessions WHERE user_id = ? AND status = 'completed' AND started_at_user >= ?`,
+      [userId, firstOfMonth],
+    );
+    return row ?? { totalSpend: 0, totalDistanceM: 0 };
+  },
+
   async deleteAllByUser(userId: string): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {

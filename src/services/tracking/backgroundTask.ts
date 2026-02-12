@@ -12,7 +12,14 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
   }
   if (data) {
     const { locations } = data as { locations: Location.LocationObject[] };
+    console.log(`[GPS] Batch received: ${locations.length} point(s)`);
     for (const loc of locations) {
+      console.log(
+        `[GPS] Raw fix — acc: ${loc.coords.accuracy?.toFixed(1) ?? 'null'}m, ` +
+        `speed: ${loc.coords.speed?.toFixed(2) ?? 'null'} m/s, ` +
+        `lat: ${loc.coords.latitude.toFixed(6)}, lon: ${loc.coords.longitude.toFixed(6)}, ` +
+        `ts: ${new Date(loc.timestamp).toISOString()}`,
+      );
       processLocationUpdate({
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,

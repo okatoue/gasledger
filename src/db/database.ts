@@ -1,6 +1,5 @@
 import * as SQLite from 'expo-sqlite';
 import { CREATE_TABLES_SQL, CREATE_INDEXES_SQL, DB_VERSION } from './schema';
-import { migrations } from './migrations';
 
 let db: SQLite.SQLiteDatabase | null = null;
 

@@ -8,22 +8,10 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
 import { vehicleService } from '@/services/vehicle/vehicleService';
-import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
+import { formatDurationLabel, formatDistance } from '@/utils/formatting';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
-
-function formatDistance(meters: number, unit: 'mi' | 'km'): string {
-  const value = unit === 'mi' ? metersToMiles(meters) : metersToKm(meters);
-  return `${value.toFixed(1)} ${unit}`;
-}
 
 export default function SessionHistoryScreen() {
   const router = useRouter();
@@ -94,7 +82,7 @@ export default function SessionHistoryScreen() {
         <Text style={styles.tripDate}>{formatSessionDate(item.started_at_user)}</Text>
         <Text style={styles.tripVehicle}>{vehicleMap.get(item.vehicle_id) ?? 'Unknown Vehicle'}</Text>
         <Text style={styles.tripDetail}>
-          {formatDistance(item.distance_m, distanceUnit)} &middot; {formatDuration(getSessionDuration(item))}
+          {formatDistance(item.distance_m, distanceUnit)} &middot; {formatDurationLabel(getSessionDuration(item))}
         </Text>
       </View>
       <View style={styles.tripRight}>

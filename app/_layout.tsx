@@ -11,6 +11,7 @@ import { sessionRepository } from '@/db/repositories/sessionRepository';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { trackingService } from '@/services/tracking/trackingService';
+import { syncService } from '@/services/sync/syncService';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '@/theme/colors';
 
@@ -68,13 +69,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AUTH] getSession resolved:', !!session);
       setSession(session);
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AUTH] onAuthStateChange:', event, '| session:', !!session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
@@ -86,6 +85,25 @@ export default function RootLayout() {
   useEffect(() => {
     if (!dbReady || !session) return;
     useSettingsStore.getState().loadSettings(session.user.id);
+  }, [dbReady, session]);
+
+  // Sync: flush queue on startup + restore from cloud on fresh install
+  useEffect(() => {
+    if (!dbReady || !session) return;
+    const userId = session.user.id;
+
+    (async () => {
+      // Flush any queued sync operations from previous offline session
+      await syncService.flushSyncQueue().catch(console.error);
+
+      // Check if this is a fresh install (no local sessions)
+      const localSessions = await sessionRepository.getByUser(userId, 1);
+      if (localSessions.length === 0) {
+        await syncService.restoreFromCloud(userId);
+        // Reload settings after restore
+        await useSettingsStore.getState().loadSettings(userId);
+      }
+    })();
   }, [dbReady, session]);
 
   // Recover interrupted sessions on app restart
