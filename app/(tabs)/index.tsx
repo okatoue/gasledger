@@ -125,61 +125,68 @@ function ParkedDashboard({
         <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
-      {/* Fuel Grade Picker */}
-      <View style={styles.fuelGradeRow}>
+      {/* Fuel / Price / Stations Card */}
+      <View style={styles.fuelPriceCard}>
+        {/* Fuel Grade Picker */}
         <FuelGradePicker selected={selectedFuelGrade} onSelect={onChangeFuelGrade} />
-      </View>
 
-      {/* B. Gas Price Widget */}
-      <View style={styles.priceWidget}>
-        <View style={styles.priceLeft}>
-          <Ionicons name="pricetag" size={20} color={colors.warning} />
-          <Text style={styles.priceLabel}>Est. Gas Price</Text>
-        </View>
-        <View style={styles.priceRight}>
-          <Text style={styles.priceCurrency}>$</Text>
-          <TextInput
-            style={styles.priceInput}
-            value={priceText}
-            keyboardType="number-pad"
-            returnKeyType="done"
-            selectTextOnFocus
-            onChangeText={(raw) => {
-              const digits = raw.replace(/\D/g, '').slice(0, 4);
-              if (digits.length === 0) { setPriceText(''); return; }
-              if (digits.length === 1) { setPriceText(digits); return; }
-              setPriceText(`${digits[0]}.${digits.slice(1)}`);
-            }}
-            onEndEditing={() => {
-              const digits = priceText.replace(/\D/g, '').padEnd(4, '0').slice(0, 4);
-              const formatted = `${digits[0]}.${digits.slice(1, 4)}`;
-              const parsed = parseFloat(formatted);
-              if (!isNaN(parsed) && parsed > 0) {
-                onChangePrice(parsed);
-              }
-              setPriceText(parsed > 0 ? formatted : gasPrice.toFixed(3));
-            }}
-          />
-          <Text style={styles.priceUnit}>/{volumeUnit}</Text>
-        </View>
-      </View>
-      {priceSource === 'home_station' && homeStationName && (
-        <Text style={styles.homeStationHint}>{homeStationName}</Text>
-      )}
+        <View style={styles.fuelPriceDivider} />
 
-      {/* Nearby Stations Bar */}
-      {hasApiKey && (
-        <NearbyStationsBar
-          stations={stations}
-          isLoading={stationsLoading}
-          error={stationsError}
-          selectedFuelGrade={selectedFuelGrade}
-          distanceUnit={distanceUnit}
-          homeStationPlaceId={homeStationPlaceId}
-          onSelectPrice={onSelectStationPrice}
-          onToggleHome={onToggleHome}
-        />
-      )}
+        {/* Est. Gas Price */}
+        <View style={styles.priceRow}>
+          <View style={styles.priceLeft}>
+            <Ionicons name="pricetag" size={20} color={colors.warning} />
+            <Text style={styles.priceLabel}>Est. Gas Price</Text>
+          </View>
+          <View style={styles.priceRight}>
+            <Text style={styles.priceCurrency}>$</Text>
+            <TextInput
+              style={styles.priceInput}
+              value={priceText}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              selectTextOnFocus
+              onChangeText={(raw) => {
+                const digits = raw.replace(/\D/g, '').slice(0, 4);
+                if (digits.length === 0) { setPriceText(''); return; }
+                if (digits.length === 1) { setPriceText(digits); return; }
+                setPriceText(`${digits[0]}.${digits.slice(1)}`);
+              }}
+              onEndEditing={() => {
+                const digits = priceText.replace(/\D/g, '').padEnd(4, '0').slice(0, 4);
+                const formatted = `${digits[0]}.${digits.slice(1, 4)}`;
+                const parsed = parseFloat(formatted);
+                if (!isNaN(parsed) && parsed > 0) {
+                  onChangePrice(parsed);
+                }
+                setPriceText(parsed > 0 ? formatted : gasPrice.toFixed(3));
+              }}
+            />
+            <Text style={styles.priceUnit}>/{volumeUnit}</Text>
+          </View>
+        </View>
+        {priceSource === 'home_station' && homeStationName && (
+          <Text style={styles.homeStationHint}>{homeStationName}</Text>
+        )}
+
+        {/* Nearby Stations */}
+        {hasApiKey && (
+          <>
+            <View style={styles.fuelPriceDivider} />
+            <NearbyStationsBar
+              stations={stations}
+              isLoading={stationsLoading}
+              error={stationsError}
+              selectedFuelGrade={selectedFuelGrade}
+              distanceUnit={distanceUnit}
+              homeStationPlaceId={homeStationPlaceId}
+              onSelectPrice={onSelectStationPrice}
+              onToggleHome={onToggleHome}
+              embedded
+            />
+          </>
+        )}
+      </View>
 
       {/* D. Quick Stats Strip */}
       <View style={styles.statsStrip}>
@@ -630,31 +637,35 @@ const styles = StyleSheet.create({
   vehicleLabel: { ...typography.caption, color: colors.textTertiary },
   vehicleName: { ...typography.h3, color: colors.text },
 
-  // ── Price Widget ──
-  priceWidget: {
+  // ── Fuel / Price / Stations Card ──
+  fuelPriceCard: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  fuelPriceDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   priceLeft: { flexDirection: 'row', alignItems: 'center' },
   priceLabel: { ...typography.label, color: colors.textSecondary, marginLeft: 8 },
-  homeStationHint: { ...typography.caption, color: colors.primary, marginTop: -spacing.md, marginBottom: spacing.md, marginLeft: spacing.xs },
+  homeStationHint: { ...typography.caption, color: colors.primary, marginTop: spacing.xs, marginLeft: spacing.xs },
   priceRight: { flexDirection: 'row', alignItems: 'center' },
   priceCurrency: { ...typography.h3, color: colors.text },
   priceInput: { ...typography.h3, color: colors.text, width: 62, padding: 0, textAlign: 'center', marginBottom: 2 },
   priceUnit: { ...typography.h3, color: colors.text },
-
-  // ── Fuel Grade Picker ──
-  fuelGradeRow: {
-    marginBottom: spacing.md,
-  },
 
   // ── Quick Stats ──
   statsStrip: {

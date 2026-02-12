@@ -159,15 +159,21 @@ export default function StationsMapScreen() {
       }
     : undefined;
 
+  // Only show stations that have a price for the selected grade
+  const visibleStations = useMemo(
+    () => stations.filter((s) => s.fuelPrices.some((p) => p.fuelGrade === selectedFuelGrade)),
+    [stations, selectedFuelGrade],
+  );
+
   // Pre-compute price labels so markers get stable string props
   const priceLabels = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const s of stations) {
+    for (const s of visibleStations) {
       const match = s.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
-      map[s.placeId] = match ? `$${match.priceValue.toFixed(2)}` : 'N/A';
+      map[s.placeId] = `$${match!.priceValue.toFixed(2)}`;
     }
     return map;
-  }, [stations, selectedFuelGrade]);
+  }, [visibleStations, selectedFuelGrade]);
 
   // Stable callback — markers hold a reference to this
   const handleMarkerPress = useCallback((station: GasStation) => {
@@ -225,7 +231,7 @@ export default function StationsMapScreen() {
           onPress={handleMapPress}
           moveOnMarkerPress={false}
         >
-          {stations.map((station) => (
+          {visibleStations.map((station) => (
             <StationMarker
               key={station.placeId}
               station={station}

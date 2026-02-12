@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -85,6 +85,8 @@ interface NearbyStationsBarProps {
   homeStationPlaceId: string | null;
   onSelectPrice: (price: number) => void;
   onToggleHome: (station: GasStation) => void;
+  /** When true, strips the card wrapper (background, shadow, margin) for embedding inside a parent card */
+  embedded?: boolean;
 }
 
 const CARD_WIDTH = 110;
@@ -106,8 +108,15 @@ function NearbyStationsBar({
   distanceUnit,
   homeStationPlaceId,
   onSelectPrice,
+  embedded,
 }: NearbyStationsBarProps) {
   const router = useRouter();
+
+  // Only show stations that have a price for the selected grade
+  const visibleStations = useMemo(
+    () => stations.filter((s) => s.fuelPrices.some((p) => p.fuelGrade === selectedFuelGrade)),
+    [stations, selectedFuelGrade],
+  );
 
   const handleSeeMap = useCallback(() => {
     router.push({ pathname: '/stations/map', params: { fuelGrade: selectedFuelGrade } });
@@ -127,7 +136,7 @@ function NearbyStationsBar({
   );
 
   return (
-    <View style={styles.outer}>
+    <View style={embedded ? styles.outerEmbedded : styles.outer}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -155,10 +164,15 @@ function NearbyStationsBar({
           <Ionicons name="alert-circle-outline" size={24} color={colors.textTertiary} />
           <Text style={styles.centeredText}>{error}</Text>
         </View>
+      ) : visibleStations.length === 0 ? (
+        <View style={styles.centered}>
+          <Ionicons name="pricetag-outline" size={24} color={colors.textTertiary} />
+          <Text style={styles.centeredText}>No prices for this fuel grade</Text>
+        </View>
       ) : (
         <FlatList
           horizontal
-          data={stations}
+          data={visibleStations}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           getItemLayout={getItemLayout}
@@ -187,6 +201,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 2,
+  },
+  outerEmbedded: {
+    paddingTop: spacing.md,
   },
   header: {
     flexDirection: 'row',
