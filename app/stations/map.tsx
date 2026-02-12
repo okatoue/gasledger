@@ -15,6 +15,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { GasStation } from '@/services/places/placesService';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
 import { FUEL_GRADES } from '@/utils/fuelGrades';
+import FuelGradePicker from '@/components/common/FuelGradePicker';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -134,17 +135,18 @@ export default function StationsMapScreen() {
   const setPendingSelection = useStationStore((s) => s.setPendingSelection);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
 
-  // Start with tracksViewChanges=true so Android renders the full custom view,
-  // then flip to false to stop per-frame re-rendering.
-  // 1500ms gives the map + marker views enough time to fully lay out before
-  // the bitmap snapshot is captured.
+  // tracksViewChanges=true lets Android render the full custom marker view;
+  // once settled we flip to false to stop per-frame re-rendering.
+  // Re-runs whenever selectedFuelGrade changes so the native map
+  // re-captures marker bitmaps with the updated price labels.
   const [markersSettled, setMarkersSettled] = useState(false);
+  const [selectedFuelGrade, setSelectedFuelGrade] = useState(params.fuelGrade ?? 'regular');
+
   useEffect(() => {
+    setMarkersSettled(false);
     const timer = setTimeout(() => setMarkersSettled(true), 1500);
     return () => clearTimeout(timer);
-  }, []);
-
-  const selectedFuelGrade = params.fuelGrade ?? 'regular';
+  }, [selectedFuelGrade]);
   const [selectedStation, setSelectedStation] = useState<GasStation | null>(null);
   const mapRef = useRef<MapView>(null);
 
@@ -204,6 +206,11 @@ export default function StationsMapScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nearby Gas Stations</Text>
         <View style={{ width: 28 }} />
+      </View>
+
+      {/* Fuel Grade Picker */}
+      <View style={styles.fuelGradeBar}>
+        <FuelGradePicker selected={selectedFuelGrade} onSelect={setSelectedFuelGrade} />
       </View>
 
       {/* Map */}
@@ -288,6 +295,13 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: 2 },
   headerTitle: { ...typography.h3, color: colors.text },
+  fuelGradeBar: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
   map: { flex: 1 },
 
   // ── No location fallback ──

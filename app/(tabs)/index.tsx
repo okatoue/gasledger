@@ -26,10 +26,10 @@ import { useNearbyStations } from '@/hooks/useNearbyStations';
 import { sessionRepository } from '@/db/repositories/sessionRepository';
 import { lastPriceRepository } from '@/db/repositories/lastPriceRepository';
 import { formatDurationTimer, formatDistance, formatCurrency } from '@/utils/formatting';
-import { FUEL_GRADES } from '@/utils/fuelGrades';
 import { env } from '@/config/env';
 import LocationModeModal from '@/components/session/LocationModeModal';
 import NearbyStationsBar from '@/components/station/NearbyStationsBar';
+import FuelGradePicker from '@/components/common/FuelGradePicker';
 import { useStationStore } from '@/stores/stationStore';
 import { useLocationPermission } from '@/hooks/useLocationPermission';
 import { colors } from '@/theme/colors';
@@ -127,19 +127,7 @@ function ParkedDashboard({
 
       {/* Fuel Grade Picker */}
       <View style={styles.fuelGradeRow}>
-        {FUEL_GRADES.map((g) => (
-          <TouchableOpacity
-            key={g.value}
-            style={[styles.fuelGradePill, selectedFuelGrade === g.value && styles.fuelGradePillActive]}
-            onPress={() => onChangeFuelGrade(g.value)}
-          >
-            <Text
-              style={[styles.fuelGradePillText, selectedFuelGrade === g.value && styles.fuelGradePillTextActive]}
-            >
-              {g.text}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <FuelGradePicker selected={selectedFuelGrade} onSelect={onChangeFuelGrade} />
       </View>
 
       {/* B. Gas Price Widget */}
@@ -665,23 +653,8 @@ const styles = StyleSheet.create({
 
   // ── Fuel Grade Picker ──
   fuelGradeRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: borderRadius.md,
-    padding: 3,
     marginBottom: spacing.md,
   },
-  fuelGradePill: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    borderRadius: borderRadius.md - 2,
-  },
-  fuelGradePillActive: {
-    backgroundColor: colors.primary,
-  },
-  fuelGradePillText: { ...typography.button, color: colors.textSecondary, fontSize: 13 },
-  fuelGradePillTextActive: { color: colors.white },
 
   // ── Quick Stats ──
   statsStrip: {
