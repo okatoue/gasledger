@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth status:*)",
+      "Bash(git init:*)",
+      "Bash(gh repo create:*)",
+      "Bash(npx create-expo-app@latest:*)",
+      "Bash(node --version:*)",
+      "Bash(npm --version:*)",
+      "Bash(dir:*)",
+      "Bash(npx expo install expo-sqlite)",
+      "Bash(npm config set:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx expo start:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 8081 -ErrorAction SilentlyContinue | Select-Object OwningProcess | ForEach-Object { Get-Process -Id $_.OwningProcess }\")",
+      "Bash(powershell.exe:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\omar_\\\\Documents\\\\gasledger\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "WebSearch",
+      "WebFetch(domain:www.fueleconomy.gov)",
+      "WebFetch(domain:faculty.washington.edu)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ropengov.github.io)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(eas build:view:*)",
+      "WebFetch(domain:job-logs.eascdn.net)"
+    ]
+  }
+}
