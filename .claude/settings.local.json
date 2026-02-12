@@ -42,7 +42,17 @@
       "Bash(git status:*)",
       "Bash(git -C \"C:\\\\Users\\\\omar_\\\\Documents\\\\gasledger\" status --short)",
       "Bash(python:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(scoop bucket add:*)",
+      "Bash(supabase login:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase secrets set:*)",
+      "Bash(supabase db push:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(timeout:*)",
+      "Bash(supabase functions:*)",
+      "Bash(supabase inspection db calls --help:*)",
+      "Bash(curl -s -X POST \"https://cdxziigvdavdldqdspky.supabase.co/functions/v1/nearby-stations\" -H \"Authorization: Bearer sb_publishable_xVjgj9Pk2pBRlX4T_5g8tQ_ByDJCTmz\" -H \"Content-Type: application/json\" -d \"{\"\"latitude\"\":40.7128,\"\"longitude\"\":-74.0060,\"\"radiusM\"\":5000,\"\"maxResults\"\":5}\")"
     ]
   }
 }
