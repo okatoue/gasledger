@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  ScrollView,
   Modal,
   TextInput,
   Alert,
@@ -102,7 +101,7 @@ function ParkedDashboard({
   }, [pulseAnim]);
 
   return (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.parkedContent} showsVerticalScrollIndicator={false}>
+    <View style={styles.parkedContainer}>
       {/* A. Active Vehicle Card */}
       <TouchableOpacity style={styles.vehicleCard} activeOpacity={0.7} onPress={onSelectVehicle}>
         <View style={styles.vehicleInfo}>
@@ -180,13 +179,13 @@ function ParkedDashboard({
       <View style={styles.startButtonContainer}>
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <TouchableOpacity style={styles.startButton} onPress={onStartDrive} activeOpacity={0.8}>
-            <Ionicons name="navigate" size={32} color={colors.white} />
+            <Ionicons name="navigate" size={24} color={colors.white} />
             <Text style={styles.startButtonText}>START DRIVE</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
 
-    </ScrollView>
+    </View>
   );
 }
 
@@ -595,6 +594,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   activeBackground: { backgroundColor: '#0F172A' },
   scrollView: { flex: 1 },
+  parkedContainer: { flex: 1, padding: spacing.lg, paddingBottom: 40 },
   parkedContent: { padding: spacing.lg, paddingBottom: 40 },
 
   // ── Vehicle Card ──
@@ -650,12 +650,14 @@ const styles = StyleSheet.create({
   // ── Start Button ──
   startButtonContainer: { alignItems: 'center', marginBottom: spacing.xl + 8 },
   startButton: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: colors.primary,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 80,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.primary,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
@@ -666,7 +668,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: '700',
-    marginTop: 6,
     letterSpacing: 1,
   },
 

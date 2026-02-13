@@ -110,4 +110,5 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ locationMode: mode });
     SecureStore.setItemAsync(LOCATION_MODE_KEY, mode).catch(() => {});
   },
+
 }));

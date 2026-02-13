@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { GasStation } from '@/services/places/placesService';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
-import { detectBrand } from '@/utils/stationBrands';
+import { detectBrand, getBrandLogoUrl } from '@/utils/stationBrands';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -38,6 +38,8 @@ const StationCard = React.memo(function StationCard({
       ? metersToMiles(station.distanceM).toFixed(1)
       : metersToKm(station.distanceM).toFixed(1);
   const brand = detectBrand(station.name);
+  const logoUrl = getBrandLogoUrl(brand);
+  const [logoError, setLogoError] = useState(false);
 
   const handlePress = useCallback(() => {
     if (priceMatch) onSelectPrice(priceMatch.priceValue);
@@ -47,8 +49,14 @@ const StationCard = React.memo(function StationCard({
     <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress}>
       {/* Circular brand icon */}
       <View style={styles.brandWrapper}>
-        <View style={[styles.brandCircle, { backgroundColor: brand.bgColor }]}>
-          {brand.icon ? (
+        <View style={[styles.brandCircle, { backgroundColor: logoUrl && !logoError ? '#FFFFFF' : brand.bgColor }]}>
+          {logoUrl && !logoError ? (
+            <Image
+              source={{ uri: logoUrl }}
+              style={styles.brandLogo}
+              onError={() => setLogoError(true)}
+            />
+          ) : brand.icon ? (
             <Image source={brand.icon} style={styles.brandIcon} />
           ) : (
             <Text style={[styles.brandInitial, { color: brand.color }]}>
@@ -111,6 +119,7 @@ function NearbyStationsBar({
   embedded,
 }: NearbyStationsBarProps) {
   const router = useRouter();
+  const [sortMode, setSortMode] = useState<'distance' | 'price'>('distance');
 
   // Brief loading state when the fuel grade changes to avoid layout jitter
   const [transitioning, setTransitioning] = useState(false);
@@ -125,11 +134,18 @@ function NearbyStationsBar({
     return () => clearTimeout(timer);
   }, [selectedFuelGrade]);
 
-  // Only show stations that have a price for the selected grade
-  const visibleStations = useMemo(
-    () => stations.filter((s) => s.fuelPrices.some((p) => p.fuelGrade === selectedFuelGrade)),
-    [stations, selectedFuelGrade],
-  );
+  // Only show stations that have a price for the selected grade, sorted by active mode
+  const visibleStations = useMemo(() => {
+    const filtered = stations.filter((s) => s.fuelPrices.some((p) => p.fuelGrade === selectedFuelGrade));
+    if (sortMode === 'price') {
+      return [...filtered].sort((a, b) => {
+        const aPrice = a.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade)?.priceValue ?? Infinity;
+        const bPrice = b.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade)?.priceValue ?? Infinity;
+        return aPrice - bPrice;
+      });
+    }
+    return filtered;
+  }, [stations, selectedFuelGrade, sortMode]);
 
   const handleSeeMap = useCallback(() => {
     router.push({ pathname: '/stations/map', params: { fuelGrade: selectedFuelGrade } });
@@ -153,8 +169,31 @@ function NearbyStationsBar({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="flame" size={18} color={colors.primary} />
+          <Ionicons name="flame" size={22} color={colors.primary} />
           <Text style={styles.headerTitle}>Nearby Stations</Text>
+          {/* Sort toggle capsule */}
+          <View style={styles.sortCapsule}>
+            <TouchableOpacity
+              style={[styles.sortPill, sortMode === 'distance' && styles.sortPillActive]}
+              onPress={() => setSortMode('distance')}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="location-outline"
+                size={14}
+                color={sortMode === 'distance' ? '#FFFFFF' : colors.textSecondary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sortPill, sortMode === 'price' && styles.sortPillActive]}
+              onPress={() => setSortMode('price')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.dollarIcon, { color: sortMode === 'price' ? '#FFFFFF' : colors.textSecondary }]}>
+                $
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <TouchableOpacity
           style={styles.seeMapButton}
@@ -234,8 +273,32 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   headerTitle: {
-    ...typography.label,
+    fontSize: 16,
+    fontWeight: '700',
     color: colors.text,
+  },
+  dollarIcon: {
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  sortCapsule: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 20,
+    padding: 3,
+    gap: 2,
+    alignSelf: 'center',
+  },
+  sortPill: {
+    width: 28,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortPillActive: {
+    backgroundColor: colors.primary,
   },
   seeMapButton: {
     flexDirection: 'row',
@@ -280,6 +343,12 @@ const styles = StyleSheet.create({
     borderRadius: CIRCLE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  brandLogo: {
+    width: CIRCLE_SIZE - 8,
+    height: CIRCLE_SIZE - 8,
+    borderRadius: (CIRCLE_SIZE - 8) / 2,
+    resizeMode: 'contain',
   },
   brandIcon: {
     width: 30,

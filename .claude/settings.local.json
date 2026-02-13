@@ -52,7 +52,10 @@
       "Bash(timeout:*)",
       "Bash(supabase functions:*)",
       "Bash(supabase inspection db calls --help:*)",
-      "Bash(curl -s -X POST \"https://cdxziigvdavdldqdspky.supabase.co/functions/v1/nearby-stations\" -H \"Authorization: Bearer sb_publishable_xVjgj9Pk2pBRlX4T_5g8tQ_ByDJCTmz\" -H \"Content-Type: application/json\" -d \"{\"\"latitude\"\":40.7128,\"\"longitude\"\":-74.0060,\"\"radiusM\"\":5000,\"\"maxResults\"\":5}\")"
+      "Bash(curl -s -X POST \"https://cdxziigvdavdldqdspky.supabase.co/functions/v1/nearby-stations\" -H \"Authorization: Bearer sb_publishable_xVjgj9Pk2pBRlX4T_5g8tQ_ByDJCTmz\" -H \"Content-Type: application/json\" -d \"{\"\"latitude\"\":40.7128,\"\"longitude\"\":-74.0060,\"\"radiusM\"\":5000,\"\"maxResults\"\":5}\")",
+      "WebFetch(domain:docs.logo.dev)",
+      "WebFetch(domain:www.logo.dev)",
+      "Bash(curl:*)"
     ]
   }
 }

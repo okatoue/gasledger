@@ -15,4 +15,7 @@ export const env = {
   // Fuel Efficiency API
   FUEL_API_URL: process.env.EXPO_PUBLIC_FUEL_API_URL ?? '',
   FUEL_API_KEY: process.env.EXPO_PUBLIC_FUEL_API_KEY ?? '',
+
+  // Logo.dev (publishable key, safe for client-side)
+  LOGO_DEV_TOKEN: process.env.EXPO_PUBLIC_LOGO_DEV_TOKEN ?? '',
 } as const;

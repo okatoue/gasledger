@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -15,6 +16,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { GasStation } from '@/services/places/placesService';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
 import { FUEL_GRADES } from '@/utils/fuelGrades';
+import { detectBrand, getBrandLogoUrl } from '@/utils/stationBrands';
 import FuelGradePicker from '@/components/common/FuelGradePicker';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -63,6 +65,8 @@ const StationMarker = React.memo(
 );
 
 // ── Memoized detail card — avoids redundant fuelPrices lookups ──
+const DETAIL_CIRCLE = 44;
+
 const DetailCard = React.memo(function DetailCard({
   station,
   selectedFuelGrade,
@@ -78,6 +82,10 @@ const DetailCard = React.memo(function DetailCard({
   onSelectGrade: (grade: string) => void;
   bottomInset: number;
 }) {
+  const brand = detectBrand(station.name);
+  const logoUrl = getBrandLogoUrl(brand);
+  const [logoError, setLogoError] = useState(false);
+
   // Build a price-by-grade map once
   const priceByGrade = useMemo(() => {
     const map: Record<string, number | null> = {};
@@ -93,6 +101,19 @@ const DetailCard = React.memo(function DetailCard({
   return (
     <View style={[styles.detailCard, { paddingBottom: bottomInset + spacing.md }]}>
       <View style={styles.detailHeader}>
+        <View style={[styles.detailBrandCircle, { backgroundColor: logoUrl && !logoError ? '#FFFFFF' : brand.bgColor }]}>
+          {logoUrl && !logoError ? (
+            <Image
+              source={{ uri: logoUrl }}
+              style={styles.detailBrandLogo}
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <Text style={[styles.detailBrandInitial, { color: brand.color }]}>
+              {brand.label.charAt(0)}
+            </Text>
+          )}
+        </View>
         <View style={styles.detailInfo}>
           <Text style={styles.detailName} numberOfLines={1}>{station.name}</Text>
           <Text style={styles.detailAddress} numberOfLines={1}>{station.address}</Text>
@@ -360,6 +381,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: spacing.md,
+  },
+  detailBrandCircle: {
+    width: DETAIL_CIRCLE,
+    height: DETAIL_CIRCLE,
+    borderRadius: DETAIL_CIRCLE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm + 2,
+  },
+  detailBrandLogo: {
+    width: DETAIL_CIRCLE - 8,
+    height: DETAIL_CIRCLE - 8,
+    borderRadius: (DETAIL_CIRCLE - 8) / 2,
+    resizeMode: 'contain',
+  },
+  detailBrandInitial: {
+    fontSize: 15,
+    fontWeight: '800',
   },
   detailInfo: { flex: 1 },
   detailName: { ...typography.h3, color: colors.text },
