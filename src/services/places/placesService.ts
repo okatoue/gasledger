@@ -32,35 +32,60 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 // ── Public API ──
 
+const INITIAL_RADIUS_M = 10_000;   // 10 km
+const EXPANDED_RADIUS_M = 25_000;  // 25 km
+const TARGET_WITH_PRICES = 20;
+
 export async function searchNearbyGasStations(
   location: { latitude: number; longitude: number },
-  radiusM: number = 5000,
-  maxResults: number = 10,
 ): Promise<GasStation[]> {
   try {
     const headers = await getAuthHeaders();
+
+    // First fetch
     const { data, error } = await supabase.functions.invoke('nearby-stations', {
-      body: { latitude: location.latitude, longitude: location.longitude, radiusM, maxResults },
+      body: { latitude: location.latitude, longitude: location.longitude, radiusM: INITIAL_RADIUS_M, maxResults: 20 },
       headers,
     });
 
     if (error || !Array.isArray(data)) return [];
 
-    const stations: GasStation[] = data.map((s: any) => ({
-      ...s,
-      distanceM: haversineDistance(
-        location.latitude,
-        location.longitude,
-        s.latitude,
-        s.longitude,
-      ),
-    }));
+    let allStations = dedupeAndMap(data, location);
 
-    stations.sort((a, b) => a.distanceM - b.distanceM);
-    return stations;
+    // If too few stations have prices, expand the radius for more
+    const withPrices = allStations.filter((s) => s.fuelPrices.length > 0).length;
+    if (withPrices < TARGET_WITH_PRICES) {
+      const { data: more } = await supabase.functions.invoke('nearby-stations', {
+        body: { latitude: location.latitude, longitude: location.longitude, radiusM: EXPANDED_RADIUS_M, maxResults: 20 },
+        headers,
+      });
+      if (Array.isArray(more)) {
+        const seen = new Set(allStations.map((s) => s.placeId));
+        const extra = dedupeAndMap(more, location).filter((s) => !seen.has(s.placeId));
+        allStations = [...allStations, ...extra];
+      }
+    }
+
+    allStations.sort((a, b) => a.distanceM - b.distanceM);
+    return allStations;
   } catch {
     return [];
   }
+}
+
+function dedupeAndMap(
+  data: any[],
+  location: { latitude: number; longitude: number },
+): GasStation[] {
+  return data.map((s: any) => ({
+    ...s,
+    distanceM: haversineDistance(
+      location.latitude,
+      location.longitude,
+      s.latitude,
+      s.longitude,
+    ),
+  }));
 }
 
 export async function getStationDetails(placeId: string): Promise<GasStation | null> {

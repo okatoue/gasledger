@@ -57,6 +57,7 @@ async function migrateV1toV2(database: SQLite.SQLiteDatabase): Promise<void> {
 
   if (hasDefaultFuelGrade) {
     await database.execAsync(`
+      DROP TABLE IF EXISTS vehicles_new;
       CREATE TABLE vehicles_new (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id),
@@ -91,6 +92,7 @@ async function migrateV1toV2(database: SQLite.SQLiteDatabase): Promise<void> {
 
   if (hasFuelGradeSession) {
     await database.execAsync(`
+      DROP TABLE IF EXISTS sessions_new;
       CREATE TABLE sessions_new (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id),
@@ -132,6 +134,7 @@ async function migrateV1toV2(database: SQLite.SQLiteDatabase): Promise<void> {
 
   if (hasFuelGradeLP) {
     await database.execAsync(`
+      DROP TABLE IF EXISTS last_prices_new;
       CREATE TABLE last_prices_new (
         id TEXT PRIMARY KEY,
         vehicle_id TEXT NOT NULL REFERENCES vehicles(id),
@@ -158,6 +161,45 @@ async function migrateV1toV2(database: SQLite.SQLiteDatabase): Promise<void> {
   await database.execAsync('PRAGMA user_version = 2;');
 
   console.log('[DB] Migration v1 → v2 complete');
+}
+
+/**
+ * Migration v2 → v3: Make last_prices per fuel_type instead of per vehicle+fuel_type.
+ * Keeps the most recent price per fuel_type, drops vehicle_id.
+ */
+async function migrateV2toV3(database: SQLite.SQLiteDatabase): Promise<void> {
+  console.log('[DB] Running migration v2 → v3: last_prices per fuel_type');
+
+  const cols = await database.getAllAsync<{ name: string }>(
+    "PRAGMA table_info(last_prices)",
+  );
+  const hasVehicleId = cols.some((c) => c.name === 'vehicle_id');
+
+  if (hasVehicleId) {
+    await database.execAsync(`
+      DROP TABLE IF EXISTS last_prices_new;
+      CREATE TABLE last_prices_new (
+        id TEXT PRIMARY KEY,
+        fuel_type TEXT NOT NULL,
+        price_value REAL NOT NULL,
+        price_unit TEXT NOT NULL,
+        price_currency TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(fuel_type)
+      );
+      INSERT OR REPLACE INTO last_prices_new (id, fuel_type, price_value, price_unit, price_currency, updated_at)
+      SELECT id, fuel_type, price_value, price_unit, price_currency, updated_at
+      FROM last_prices
+      GROUP BY fuel_type
+      HAVING updated_at = MAX(updated_at);
+      DROP TABLE last_prices;
+      ALTER TABLE last_prices_new RENAME TO last_prices;
+      CREATE INDEX IF NOT EXISTS idx_last_prices_fuel_type ON last_prices(fuel_type);
+    `);
+  }
+
+  await database.execAsync('PRAGMA user_version = 3;');
+  console.log('[DB] Migration v2 → v3 complete');
 }
 
 export async function closeDatabase(): Promise<void> {

@@ -76,7 +76,7 @@ serve(async (req) => {
   }
 
   try {
-    const { latitude, longitude, radiusM = 5000, maxResults = 10 } = await req.json();
+    const { latitude, longitude, radiusM = 10000, maxResults = 20 } = await req.json();
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       return new Response(JSON.stringify({ error: 'latitude and longitude are required' }), {
