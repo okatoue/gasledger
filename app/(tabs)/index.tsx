@@ -366,6 +366,11 @@ function VehiclePickerModal({
   );
 }
 
+// Persists the selected vehicle ID across component remounts (e.g. after
+// router.replace from session summary). Lives outside React state so it
+// survives full unmount/remount cycles within the same app session.
+let _lastSelectedVehicleId: string | null = null;
+
 // ═══════════════════════════════════════════════════════
 // MAIN DASHBOARD SCREEN
 // ═══════════════════════════════════════════════════════
@@ -406,25 +411,39 @@ export default function DashboardScreen() {
   const homeStationPrice = homeStation.getPriceForType(selectedFuelType);
 
   const { gasPrice, setGasPrice, priceSource } = useGasPrice(
-    selectedVehicle?.id ?? null,
     selectedFuelType,
     homeStationPrice,
   );
 
-  useEffect(() => {
-    if (!session) return;
-    vehicleService.getByUser(session.user.id).then((data) => {
-      setVehicles(data);
-      if (data.length > 0) {
-        setSelectedVehicle(data[0]);
-        setSelectedFuelType(data[0].fuel_type || 'regular');
-      }
-    });
-  }, [session]);
+  // Load & refresh vehicle list on focus. Preserves current selection across
+  // remounts (e.g. returning from session summary) using module-level variable.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      vehicleService.getByUser(session.user.id).then((data) => {
+        setVehicles(data);
+        if (data.length === 0) {
+          setSelectedVehicle(null);
+          _lastSelectedVehicleId = null;
+          return;
+        }
+        const rememberedId = _lastSelectedVehicleId;
+        const match = rememberedId ? data.find((v) => v.id === rememberedId) : null;
+        if (match) {
+          setSelectedVehicle(match);
+        } else {
+          setSelectedVehicle(data[0]);
+          setSelectedFuelType(data[0].fuel_type || 'regular');
+          _lastSelectedVehicleId = data[0].id;
+        }
+      });
+    }, [session]),
+  );
 
-  // Reset fuel grade when vehicle changes
+  // Sync fuel type and persist selection when vehicle changes
   useEffect(() => {
     if (selectedVehicle) {
+      _lastSelectedVehicleId = selectedVehicle.id;
       setSelectedFuelType(selectedVehicle.fuel_type || 'regular');
     }
   }, [selectedVehicle?.id]);
@@ -480,27 +499,23 @@ export default function DashboardScreen() {
 
   const handleChangePrice = (price: number) => {
     setGasPrice(price);
-    if (selectedVehicle) {
-      lastPriceRepository.upsert(
-        selectedVehicle.id,
-        selectedFuelType,
-        price,
-        volumeUnit === 'gal' ? 'per_gal' : 'per_l',
-        'usd',
-      ).catch(() => {});
-    }
+    lastPriceRepository.upsert(
+      selectedFuelType,
+      price,
+      volumeUnit === 'gal' ? 'per_gal' : 'per_l',
+      'usd',
+    ).catch(() => {});
   };
 
   // Consume pending price selection from map
   useEffect(() => {
-    if (!pendingSelection || !selectedVehicle) return;
+    if (!pendingSelection) return;
     const { price, fuelType } = pendingSelection;
     clearPendingSelection();
 
     const apply = async () => {
       // Persist first so useGasPrice finds it when the type changes
       await lastPriceRepository.upsert(
-        selectedVehicle.id,
         fuelType,
         price,
         volumeUnit === 'gal' ? 'per_gal' : 'per_l',

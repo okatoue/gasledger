@@ -1,4 +1,4 @@
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export const CREATE_TABLES_SQL: string[] = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -30,13 +30,12 @@ export const CREATE_TABLES_SQL: string[] = [
 
   `CREATE TABLE IF NOT EXISTS last_prices (
     id TEXT PRIMARY KEY,
-    vehicle_id TEXT NOT NULL REFERENCES vehicles(id),
     fuel_type TEXT NOT NULL,
     price_value REAL NOT NULL,
     price_unit TEXT NOT NULL,
     price_currency TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    UNIQUE(vehicle_id, fuel_type)
+    UNIQUE(fuel_type)
   );`,
 
   `CREATE TABLE IF NOT EXISTS sessions (
@@ -107,7 +106,7 @@ export const CREATE_TABLES_SQL: string[] = [
 
 export const CREATE_INDEXES_SQL: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_vehicles_user_id ON vehicles(user_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_last_prices_vehicle_id ON last_prices(vehicle_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_last_prices_fuel_type ON last_prices(fuel_type);`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_vehicle_id ON sessions(vehicle_id);`,
   `CREATE INDEX IF NOT EXISTS idx_tracking_gaps_session_id ON tracking_gaps(session_id);`,

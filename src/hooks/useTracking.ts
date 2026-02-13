@@ -88,11 +88,10 @@ export function useTracking() {
         routePointsCount: totals.routePointCount,
       });
 
-      // 3b. Save last price for this vehicle/grade
+      // 3b. Save last price for this fuel type
       const completedSession = await sessionRepository.getById(sessionId);
       if (completedSession && completedSession.gas_price_value != null) {
         await lastPriceRepository.upsert(
-          completedSession.vehicle_id,
           completedSession.fuel_type,
           completedSession.gas_price_value,
           completedSession.gas_price_unit ?? 'per_gal',

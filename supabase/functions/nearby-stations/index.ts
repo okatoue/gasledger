@@ -77,10 +77,8 @@ serve(async (req) => {
 
   try {
     const { latitude, longitude, radiusM = 5000, maxResults = 10 } = await req.json();
-    console.log('[nearby-stations] Request:', { latitude, longitude, radiusM, maxResults });
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-      console.log('[nearby-stations] Invalid coords');
       return new Response(JSON.stringify({ error: 'latitude and longitude are required' }), {
         status: 400,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -89,7 +87,6 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    console.log('[nearby-stations] Supabase URL:', supabaseUrl ? 'SET' : 'MISSING', 'Service key:', serviceRoleKey ? 'SET' : 'MISSING');
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Bounding box for cache lookup (approximate degrees for the radius)
@@ -108,8 +105,6 @@ serve(async (req) => {
       .gte('longitude', longitude - lonDelta)
       .lte('longitude', longitude + lonDelta)
       .gte('updated_at', freshThreshold);
-
-    console.log('[nearby-stations] Cache query — error:', cacheError?.message ?? 'none', 'rows:', cached?.length ?? 0);
 
     // Group cached rows by place_id
     const stationMap = new Map<string, typeof cached>();
@@ -148,10 +143,8 @@ serve(async (req) => {
     }
 
     // Cache miss or not enough results — call Google Places API
-    console.log('[nearby-stations] Cache has', stationMap.size, 'stations, need', maxResults, '— calling Google API');
     const googleApiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
     if (!googleApiKey) {
-      console.log('[nearby-stations] GOOGLE_PLACES_API_KEY is MISSING');
       return new Response(JSON.stringify([]), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
@@ -178,17 +171,13 @@ serve(async (req) => {
     });
 
     if (!googleRes.ok) {
-      const errBody = await googleRes.text();
-      console.log('[nearby-stations] Google API error:', googleRes.status, errBody.slice(0, 500));
       return new Response(JSON.stringify([]), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
     const data = await googleRes.json();
-    console.log('[nearby-stations] Google returned', data.places?.length ?? 0, 'places');
     if (!data.places || !Array.isArray(data.places)) {
-      console.log('[nearby-stations] No places array in Google response');
       return new Response(JSON.stringify([]), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
@@ -245,16 +234,15 @@ serve(async (req) => {
       const { error: upsertError } = await supabase
         .from('station_prices')
         .upsert(upsertRows, { onConflict: 'place_id,fuel_type' });
-      if (upsertError) console.log('[nearby-stations] Upsert error:', upsertError.message);
+      if (upsertError) console.error('[nearby-stations] Upsert error:', upsertError.message);
     }
 
     stations.sort((a, b) => a.distanceM - b.distanceM);
-    console.log('[nearby-stations] Returning', stations.length, 'stations');
     return new Response(JSON.stringify(stations), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('[nearby-stations] CAUGHT ERROR:', err);
+    console.error('[nearby-stations] Error:', err);
     return new Response(JSON.stringify([]), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
