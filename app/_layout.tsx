@@ -10,6 +10,7 @@ import { vehicleService } from '@/services/vehicle/vehicleService';
 import { sessionRepository } from '@/db/repositories/sessionRepository';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useVehicleStore } from '@/stores/vehicleStore';
 import { trackingService } from '@/services/tracking/trackingService';
 import { syncService } from '@/services/sync/syncService';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -80,11 +81,12 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load user settings from SQLite when both DB and session are ready
+  // Load user settings and vehicles from SQLite when both DB and session are ready
   const session = useAuthStore((s) => s.session);
   useEffect(() => {
     if (!dbReady || !session) return;
     useSettingsStore.getState().loadSettings(session.user.id);
+    useVehicleStore.getState().loadVehicles(session.user.id);
   }, [dbReady, session]);
 
   // Sync: flush queue on startup + restore from cloud on fresh install

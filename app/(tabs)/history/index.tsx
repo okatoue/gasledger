@@ -6,8 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useVehicleStore } from '@/stores/vehicleStore';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
-import { vehicleService } from '@/services/vehicle/vehicleService';
 import { formatDurationLabel, formatDistance, formatCurrency } from '@/utils/formatting';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -28,9 +28,8 @@ export default function SessionHistoryScreen() {
   const loadData = useCallback(async () => {
     if (!session) return;
     try {
-      const [allSessions, vehicles, stats] = await Promise.all([
+      const [allSessions, stats] = await Promise.all([
         sessionRepository.getByUser(session.user.id),
-        vehicleService.getByUser(session.user.id),
         sessionRepository.getMonthlyStats(session.user.id),
       ]);
       const completed = allSessions.filter((s) => s.status === 'completed');
@@ -38,11 +37,15 @@ export default function SessionHistoryScreen() {
       setMonthlySpend(stats.totalSpend);
       setMonthlyDistance(stats.totalDistanceM);
 
+      const vehicles = useVehicleStore.getState().vehicles;
       const map = new Map<string, string>();
       for (const v of vehicles) {
         map.set(v.id, `${v.year} ${v.make} ${v.model}`);
       }
       setVehicleMap(map);
+
+      // Refresh vehicles from Supabase in background
+      useVehicleStore.getState().refreshVehicles(session.user.id);
     } catch (error) {
       console.error('[History] Failed to load sessions:', error);
     } finally {

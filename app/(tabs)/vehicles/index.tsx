@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
-import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
+import { useVehicleStore } from '@/stores/vehicleStore';
+import type { Vehicle } from '@/services/vehicle/vehicleService';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -47,28 +48,17 @@ function VehicleCard({ vehicle, onPress }: { vehicle: Vehicle; onPress: () => vo
 export default function VehiclesScreen() {
   const session = useAuthStore((s) => s.session);
   const router = useRouter();
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadVehicles = useCallback(async () => {
-    if (!session) return;
-    try {
-      const data = await vehicleService.getByUser(session.user.id);
-      setVehicles(data);
-    } catch (error) {
-      console.error('[Vehicles] Load failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
+  const vehicles = useVehicleStore((s) => s.vehicles);
+  const isLoaded = useVehicleStore((s) => s.isLoaded);
 
   useFocusEffect(
     useCallback(() => {
-      loadVehicles();
-    }, [loadVehicles]),
+      if (!session) return;
+      useVehicleStore.getState().refreshVehicles(session.user.id);
+    }, [session]),
   );
 
-  if (loading) {
+  if (!isLoaded) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />

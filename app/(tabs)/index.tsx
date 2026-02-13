@@ -13,10 +13,13 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
-import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
+import { useVehicleStore } from '@/stores/vehicleStore';
+import type { Vehicle } from '@/services/vehicle/vehicleService';
 import { metersToMiles } from '@/services/fuel/unitConverter';
 import { useTracking } from '@/hooks/useTracking';
 import { useGasPrice } from '@/hooks/useGasPrice';
@@ -27,6 +30,7 @@ import { formatDurationTimer, formatDistance, formatCurrency } from '@/utils/for
 import LocationModeModal from '@/components/session/LocationModeModal';
 import NearbyStationsBar from '@/components/station/NearbyStationsBar';
 import FuelTypePicker from '@/components/common/FuelTypePicker';
+import RollingPrice from '@/components/common/RollingPrice';
 import { useStationStore } from '@/stores/stationStore';
 import { useLocationPermission } from '@/hooks/useLocationPermission';
 import { colors } from '@/theme/colors';
@@ -82,11 +86,14 @@ function ParkedDashboard({
   onToggleHome: (station: import('@/services/places/placesService').GasStation) => void;
 }) {
   const [priceText, setPriceText] = useState(gasPrice.toFixed(3));
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Sync displayed price when the hook returns a different price (e.g. grade changed)
+  // Sync displayed price when not editing
   useEffect(() => {
-    setPriceText(gasPrice.toFixed(3));
+    if (!isEditingPrice) {
+      setPriceText(gasPrice.toFixed(3));
+    }
   }, [gasPrice]);
 
   useEffect(() => {
@@ -131,28 +138,42 @@ function ParkedDashboard({
           </View>
           <View style={styles.priceRight}>
             <Text style={styles.priceCurrency}>$</Text>
-            <TextInput
-              style={styles.priceInput}
-              value={priceText}
-              keyboardType="number-pad"
-              returnKeyType="done"
-              selectTextOnFocus
-              onChangeText={(raw) => {
-                const digits = raw.replace(/\D/g, '').slice(0, 4);
-                if (digits.length === 0) { setPriceText(''); return; }
-                if (digits.length === 1) { setPriceText(digits); return; }
-                setPriceText(`${digits[0]}.${digits.slice(1)}`);
-              }}
-              onEndEditing={() => {
-                const digits = priceText.replace(/\D/g, '').padEnd(4, '0').slice(0, 4);
-                const formatted = `${digits[0]}.${digits.slice(1, 4)}`;
-                const parsed = parseFloat(formatted);
-                if (!isNaN(parsed) && parsed > 0) {
-                  onChangePrice(parsed);
-                }
-                setPriceText(parsed > 0 ? formatted : gasPrice.toFixed(3));
-              }}
-            />
+            {isEditingPrice ? (
+              <TextInput
+                style={styles.priceInput}
+                value={priceText}
+                keyboardType="number-pad"
+                returnKeyType="done"
+                autoFocus
+                selectTextOnFocus
+                onChangeText={(raw) => {
+                  const digits = raw.replace(/\D/g, '').slice(0, 4);
+                  if (digits.length === 0) { setPriceText(''); return; }
+                  if (digits.length === 1) { setPriceText(digits); return; }
+                  setPriceText(`${digits[0]}.${digits.slice(1)}`);
+                }}
+                onEndEditing={() => {
+                  const digits = priceText.replace(/\D/g, '').padEnd(4, '0').slice(0, 4);
+                  const formatted = `${digits[0]}.${digits.slice(1, 4)}`;
+                  const parsed = parseFloat(formatted);
+                  if (!isNaN(parsed) && parsed > 0) {
+                    onChangePrice(parsed);
+                  }
+                  setPriceText(parsed > 0 ? formatted : gasPrice.toFixed(3));
+                  setIsEditingPrice(false);
+                }}
+                onBlur={() => setIsEditingPrice(false)}
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setIsEditingPrice(true)} activeOpacity={0.7}>
+                <RollingPrice
+                  value={gasPrice.toFixed(3)}
+                  textStyle={styles.priceDigit}
+                  height={24}
+                  duration={250}
+                />
+              </TouchableOpacity>
+            )}
             <Text style={styles.priceUnit}>/{volumeUnit}</Text>
           </View>
         </View>
@@ -327,10 +348,11 @@ function VehiclePickerModal({
   onSelect: (vehicle: Vehicle) => void;
   onClose: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade">
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalContent} onPress={() => {}}>
+        <Pressable style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]} onPress={() => {}}>
           <Text style={styles.modalTitle}>Select Vehicle</Text>
           <Text style={styles.modalSubtitle}>Choose which vehicle you're driving</Text>
           <View style={styles.vehicleList}>
@@ -370,6 +392,7 @@ function VehiclePickerModal({
 // router.replace from session summary). Lives outside React state so it
 // survives full unmount/remount cycles within the same app session.
 let _lastSelectedVehicleId: string | null = null;
+const SELECTED_VEHICLE_KEY = 'gasledger_selected_vehicle_id';
 
 // ═══════════════════════════════════════════════════════
 // MAIN DASHBOARD SCREEN
@@ -386,7 +409,7 @@ export default function DashboardScreen() {
 
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [locationModeModalVisible, setLocationModeModalVisible] = useState(false);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const vehicles = useVehicleStore((s) => s.vehicles);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedFuelType, setSelectedFuelType] = useState<string>('regular');
 
@@ -415,35 +438,41 @@ export default function DashboardScreen() {
     homeStationPrice,
   );
 
-  // Load & refresh vehicle list on focus. Preserves current selection across
-  // remounts (e.g. returning from session summary) using module-level variable.
+  // Refresh vehicles from Supabase on focus
   useFocusEffect(
     useCallback(() => {
       if (!session) return;
-      vehicleService.getByUser(session.user.id).then((data) => {
-        setVehicles(data);
-        if (data.length === 0) {
-          setSelectedVehicle(null);
-          _lastSelectedVehicleId = null;
-          return;
-        }
-        const rememberedId = _lastSelectedVehicleId;
-        const match = rememberedId ? data.find((v) => v.id === rememberedId) : null;
-        if (match) {
-          setSelectedVehicle(match);
-        } else {
-          setSelectedVehicle(data[0]);
-          setSelectedFuelType(data[0].fuel_type || 'regular');
-          _lastSelectedVehicleId = data[0].id;
-        }
-      });
+      useVehicleStore.getState().refreshVehicles(session.user.id);
     }, [session]),
   );
+
+  // Derive selectedVehicle whenever vehicles change (from cache or refresh)
+  useEffect(() => {
+    if (vehicles.length === 0) {
+      setSelectedVehicle(null);
+      _lastSelectedVehicleId = null;
+      SecureStore.deleteItemAsync(SELECTED_VEHICLE_KEY).catch(() => {});
+      return;
+    }
+    (async () => {
+      const storedId = await SecureStore.getItemAsync(SELECTED_VEHICLE_KEY);
+      const rememberedId = _lastSelectedVehicleId ?? storedId;
+      const match = rememberedId ? vehicles.find((v) => v.id === rememberedId) : null;
+      if (match) {
+        setSelectedVehicle(match);
+      } else {
+        setSelectedVehicle(vehicles[0]);
+        setSelectedFuelType(vehicles[0].fuel_type || 'regular');
+        _lastSelectedVehicleId = vehicles[0].id;
+      }
+    })();
+  }, [vehicles]);
 
   // Sync fuel type and persist selection when vehicle changes
   useEffect(() => {
     if (selectedVehicle) {
       _lastSelectedVehicleId = selectedVehicle.id;
+      SecureStore.setItemAsync(SELECTED_VEHICLE_KEY, selectedVehicle.id).catch(() => {});
       setSelectedFuelType(selectedVehicle.fuel_type || 'regular');
     }
   }, [selectedVehicle?.id]);
@@ -660,6 +689,7 @@ const styles = StyleSheet.create({
   priceRight: { flexDirection: 'row', alignItems: 'center' },
   priceCurrency: { ...typography.h3, color: colors.text },
   priceInput: { ...typography.h3, color: colors.text, width: 62, padding: 0, textAlign: 'center', marginBottom: 2 },
+  priceDigit: { ...typography.h3, color: colors.text, textAlign: 'center' },
   priceUnit: { ...typography.h3, color: colors.text },
 
   // ── Start Button ──
@@ -790,7 +820,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: spacing.lg,
-    paddingBottom: 40,
   },
   modalTitle: { ...typography.h2, color: colors.text, marginBottom: 4 },
   modalSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.lg },
