@@ -1,4 +1,4 @@
-import { FuelGrade, PriceSource, SessionStatus } from '@/models/enums';
+import { FuelType, PriceSource, SessionStatus } from '@/models/enums';
 import { Currency } from '@/models/units';
 
 export interface Session {
@@ -10,7 +10,7 @@ export interface Session {
   ended_at_user?: string;
   distance_m: number;
   stopped_seconds: number;
-  fuel_grade: FuelGrade;
+  fuel_type: FuelType;
   gas_price_value: number;
   gas_price_unit: string;
   gas_price_currency: Currency;

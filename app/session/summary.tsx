@@ -112,8 +112,8 @@ export default function SessionSummaryScreen() {
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Fuel Grade</Text>
-            <Text style={styles.detailValue}>{session.fuel_grade}</Text>
+            <Text style={styles.detailLabel}>Fuel Type</Text>
+            <Text style={styles.detailValue}>{session.fuel_type}</Text>
           </View>
           {session.route_enabled === 1 && (
             <View style={styles.detailRow}>

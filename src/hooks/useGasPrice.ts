@@ -7,7 +7,7 @@ export type PriceSource = 'manual' | 'home_station' | 'default';
 
 export function useGasPrice(
   vehicleId: string | null,
-  fuelGrade: string | null,
+  fuelType: string | null,
   homeStationPrice: number | null = null,
 ) {
   const [gasPrice, setGasPrice] = useState(DEFAULT_GAS_PRICE);
@@ -15,7 +15,7 @@ export function useGasPrice(
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (!vehicleId || !fuelGrade) {
+    if (!vehicleId || !fuelType) {
       setGasPrice(DEFAULT_GAS_PRICE);
       setPriceSource('default');
       setIsLoaded(true);
@@ -23,7 +23,7 @@ export function useGasPrice(
     }
 
     let cancelled = false;
-    lastPriceRepository.get(vehicleId, fuelGrade).then((record) => {
+    lastPriceRepository.get(vehicleId, fuelType).then((record) => {
       if (cancelled) return;
       if (record) {
         setGasPrice(record.price_value);
@@ -39,7 +39,7 @@ export function useGasPrice(
     });
 
     return () => { cancelled = true; };
-  }, [vehicleId, fuelGrade, homeStationPrice]);
+  }, [vehicleId, fuelType, homeStationPrice]);
 
   return { gasPrice, setGasPrice, isLoaded, priceSource };
 }

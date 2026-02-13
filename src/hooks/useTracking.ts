@@ -12,7 +12,7 @@ import { syncService } from '@/services/sync/syncService';
 interface StartTrackingInput {
   userId: string;
   vehicleId: string;
-  fuelGrade: string;
+  fuelType: string;
   gasPriceValue: number;
   gasPriceUnit: string;
   gasPriceCurrency: string;
@@ -44,7 +44,7 @@ export function useTracking() {
       const sessionId = await sessionRepository.create({
         userId: input.userId,
         vehicleId: input.vehicleId,
-        fuelGrade: input.fuelGrade,
+        fuelType: input.fuelType,
         gasPriceValue: input.gasPriceValue,
         gasPriceUnit: input.gasPriceUnit,
         gasPriceCurrency: input.gasPriceCurrency,
@@ -93,7 +93,7 @@ export function useTracking() {
       if (completedSession && completedSession.gas_price_value != null) {
         await lastPriceRepository.upsert(
           completedSession.vehicle_id,
-          completedSession.fuel_grade,
+          completedSession.fuel_type,
           completedSession.gas_price_value,
           completedSession.gas_price_unit ?? 'per_gal',
           completedSession.gas_price_currency ?? 'usd',

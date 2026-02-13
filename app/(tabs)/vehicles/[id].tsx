@@ -17,12 +17,7 @@ import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
-const FUEL_GRADES = [
-  { text: 'Regular', value: 'regular' },
-  { text: 'Midgrade', value: 'midgrade' },
-  { text: 'Premium', value: 'premium' },
-  { text: 'Diesel', value: 'diesel' },
-];
+import { FUEL_TYPES } from '@/utils/fuelTypes';
 
 const EFFICIENCY_UNITS = [
   { text: 'MPG', value: 'mpg' },
@@ -40,7 +35,7 @@ export default function EditVehicleScreen() {
 
   const [editEfficiency, setEditEfficiency] = useState('');
   const [editEfficiencyUnit, setEditEfficiencyUnit] = useState('mpg');
-  const [editFuelGrade, setEditFuelGrade] = useState('regular');
+  const [editFuelType, setEditFuelType] = useState('regular');
 
   useEffect(() => {
     if (!id) return;
@@ -51,7 +46,7 @@ export default function EditVehicleScreen() {
           setVehicle(v);
           setEditEfficiency(v.efficiency_value.toString());
           setEditEfficiencyUnit(v.efficiency_unit);
-          setEditFuelGrade(v.default_fuel_grade);
+          setEditFuelType(v.fuel_type);
         }
       })
       .catch((error) => console.error('[EditVehicle] Load failed:', error))
@@ -66,7 +61,7 @@ export default function EditVehicleScreen() {
       await vehicleService.update(vehicle.id, {
         efficiency_value: effValue,
         efficiency_unit: editEfficiencyUnit,
-        default_fuel_grade: editFuelGrade,
+        fuel_type: editFuelType,
       });
       router.back();
     } catch (error) {
@@ -153,11 +148,11 @@ export default function EditVehicleScreen() {
         />
 
         <DropdownPicker
-          label="Default Fuel Grade"
-          placeholder="Select grade..."
-          items={FUEL_GRADES}
-          selectedValue={editFuelGrade}
-          onSelect={(item) => setEditFuelGrade(item.value)}
+          label="Fuel Type"
+          placeholder="Select type..."
+          items={FUEL_TYPES}
+          selectedValue={editFuelType}
+          onSelect={(item) => setEditFuelType(item.value)}
         />
       </View>
 

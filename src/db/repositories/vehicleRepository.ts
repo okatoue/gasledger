@@ -8,7 +8,6 @@ export interface CreateVehicleInput {
   model: string;
   year: number;
   fuelType?: string;
-  defaultFuelGrade?: string;
   efficiencyValue?: number;
   efficiencyUnit?: string;
   efficiencySource?: string;
@@ -30,8 +29,8 @@ export const vehicleRepository = {
     const now = new Date().toISOString();
 
     await db.runAsync(
-      `INSERT INTO vehicles (id, user_id, vin, make, model, year, fuel_type, default_fuel_grade, efficiency_value, efficiency_unit, efficiency_source, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      `INSERT INTO vehicles (id, user_id, vin, make, model, year, fuel_type, efficiency_value, efficiency_unit, efficiency_source, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       [
         id,
         input.userId,
@@ -39,8 +38,7 @@ export const vehicleRepository = {
         input.make,
         input.model,
         input.year,
-        input.fuelType ?? 'gasoline',
-        input.defaultFuelGrade ?? 'regular',
+        input.fuelType ?? 'regular',
         input.efficiencyValue ?? 0,
         input.efficiencyUnit ?? 'mpg',
         input.efficiencySource ?? 'manual',

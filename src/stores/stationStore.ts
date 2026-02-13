@@ -9,7 +9,7 @@ interface UserLocation {
 interface PendingSelection {
   price: number;
   stationName: string;
-  fuelGrade: string;
+  fuelType: string;
 }
 
 interface StationState {

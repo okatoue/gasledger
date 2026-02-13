@@ -2,7 +2,6 @@ export {
   AuthProvider,
   EfficiencySource,
   EfficiencyUnit,
-  FuelGrade,
   FuelType,
   PriceSource,
   SessionStatus,

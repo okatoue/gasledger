@@ -1,4 +1,4 @@
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const CREATE_TABLES_SQL: string[] = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -20,7 +20,6 @@ export const CREATE_TABLES_SQL: string[] = [
     model TEXT NOT NULL,
     year INTEGER NOT NULL,
     fuel_type TEXT NOT NULL,
-    default_fuel_grade TEXT NOT NULL,
     efficiency_value REAL NOT NULL,
     efficiency_unit TEXT NOT NULL,
     efficiency_source TEXT NOT NULL,
@@ -32,12 +31,12 @@ export const CREATE_TABLES_SQL: string[] = [
   `CREATE TABLE IF NOT EXISTS last_prices (
     id TEXT PRIMARY KEY,
     vehicle_id TEXT NOT NULL REFERENCES vehicles(id),
-    fuel_grade TEXT NOT NULL,
+    fuel_type TEXT NOT NULL,
     price_value REAL NOT NULL,
     price_unit TEXT NOT NULL,
     price_currency TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    UNIQUE(vehicle_id, fuel_grade)
+    UNIQUE(vehicle_id, fuel_type)
   );`,
 
   `CREATE TABLE IF NOT EXISTS sessions (
@@ -49,7 +48,7 @@ export const CREATE_TABLES_SQL: string[] = [
     ended_at_user TEXT,
     distance_m REAL NOT NULL DEFAULT 0,
     stopped_seconds REAL NOT NULL DEFAULT 0,
-    fuel_grade TEXT NOT NULL,
+    fuel_type TEXT NOT NULL,
     gas_price_value REAL,
     gas_price_unit TEXT,
     gas_price_currency TEXT,

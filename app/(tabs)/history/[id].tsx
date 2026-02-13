@@ -22,7 +22,7 @@ import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
 import { calculateFuelUsed, calculateCost } from '@/services/fuel/fuelCalculator';
 import { formatDurationLabel } from '@/utils/formatting';
 import DropdownPicker from '@/components/common/Select';
-import { FUEL_GRADES } from '@/utils/fuelGrades';
+import { FUEL_TYPES } from '@/utils/fuelTypes';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -43,7 +43,7 @@ export default function SessionDetailScreen() {
 
   // Edit state
   const [editGasPrice, setEditGasPrice] = useState('');
-  const [editFuelGrade, setEditFuelGrade] = useState('');
+  const [editFuelType, setEditFuelType] = useState('');
   const [editVehicleId, setEditVehicleId] = useState('');
   const [editNotes, setEditNotes] = useState('');
 
@@ -58,7 +58,7 @@ export default function SessionDetailScreen() {
       if (s) {
         setSession(s);
         setEditGasPrice(s.gas_price_value?.toString() ?? '');
-        setEditFuelGrade(s.fuel_grade);
+        setEditFuelType(s.fuel_type);
         setEditVehicleId(s.vehicle_id);
         setEditNotes(s.notes ?? '');
       }
@@ -89,7 +89,7 @@ export default function SessionDetailScreen() {
 
       await sessionRepository.update(session.id, {
         vehicleId: editVehicleId,
-        fuelGrade: editFuelGrade,
+        fuelType: editFuelType,
         gasPriceValue,
         gasPriceUnit: session.gas_price_unit ?? 'per_gal',
         notes: editNotes.trim() || undefined,
@@ -218,11 +218,11 @@ export default function SessionDetailScreen() {
           />
 
           <DropdownPicker
-            label="Fuel Grade"
+            label="Fuel Type"
             placeholder="Select grade..."
-            items={FUEL_GRADES}
-            selectedValue={editFuelGrade}
-            onSelect={(item) => setEditFuelGrade(item.value)}
+            items={FUEL_TYPES}
+            selectedValue={editFuelType}
+            onSelect={(item) => setEditFuelType(item.value)}
           />
 
           <DropdownPicker
@@ -250,7 +250,7 @@ export default function SessionDetailScreen() {
               onPress={() => {
                 setEditing(false);
                 setEditGasPrice(session.gas_price_value?.toString() ?? '');
-                setEditFuelGrade(session.fuel_grade);
+                setEditFuelType(session.fuel_type);
                 setEditVehicleId(session.vehicle_id);
                 setEditNotes(session.notes ?? '');
               }}
@@ -275,8 +275,8 @@ export default function SessionDetailScreen() {
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Fuel Grade</Text>
-            <Text style={styles.detailValue}>{session.fuel_grade}</Text>
+            <Text style={styles.detailLabel}>Fuel Type</Text>
+            <Text style={styles.detailValue}>{session.fuel_type}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Vehicle</Text>

@@ -124,14 +124,13 @@ export default function OnboardingScreen() {
         });
       } else {
         const details = fuelLookup.vehicleDetails!;
-        const { fuelType, fuelGrade } = normalizeFuelInfo(details.fuelType1);
+        const { fuelType } = normalizeFuelInfo(details.fuelType1);
         await vehicleService.create({
           user_id: currentSession.user.id,
           make: details.make,
           model: details.model,
           year: details.year,
           fuel_type: fuelType,
-          default_fuel_grade: fuelGrade,
           efficiency_value: details.comb08,
           efficiency_unit: 'mpg',
           efficiency_source: 'fueleconomy.gov',
@@ -353,7 +352,7 @@ export default function OnboardingScreen() {
                           </Text>
                           <Text style={styles.vinResultSub}>
                             Combined: {fuelLookup.vehicleDetails.comb08} MPG {'  '}
-                            {normalizeFuelInfo(fuelLookup.vehicleDetails.fuelType1).fuelType}
+                            Fuel: {normalizeFuelInfo(fuelLookup.vehicleDetails.fuelType1).fuelType}
                           </Text>
                         </View>
                       </View>

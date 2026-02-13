@@ -87,12 +87,10 @@ export async function fetchVehicleDetails(vehicleId: string): Promise<VehicleDet
   return parseVehicleDetails(xml);
 }
 
-export function normalizeFuelInfo(fuelType1: string): { fuelType: string; fuelGrade: string } {
+export function normalizeFuelInfo(fuelType1: string): { fuelType: string } {
   const lower = fuelType1.toLowerCase();
-  if (lower.includes('premium')) return { fuelType: 'gasoline', fuelGrade: 'premium' };
-  if (lower.includes('midgrade')) return { fuelType: 'gasoline', fuelGrade: 'midgrade' };
-  if (lower.includes('diesel')) return { fuelType: 'diesel', fuelGrade: 'diesel' };
-  if (lower.includes('electric')) return { fuelType: 'other', fuelGrade: 'other' };
-  if (lower.includes('gasoline') || lower.includes('regular')) return { fuelType: 'gasoline', fuelGrade: 'regular' };
-  return { fuelType: 'gasoline', fuelGrade: 'regular' };
+  if (lower.includes('premium')) return { fuelType: 'premium' };
+  if (lower.includes('midgrade')) return { fuelType: 'midgrade' };
+  if (lower.includes('diesel')) return { fuelType: 'diesel' };
+  return { fuelType: 'regular' };
 }

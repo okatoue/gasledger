@@ -4,7 +4,7 @@ import * as Crypto from 'expo-crypto';
 export interface CreateSessionInput {
   userId: string;
   vehicleId: string;
-  fuelGrade: string;
+  fuelType: string;
   gasPriceValue: number;
   gasPriceUnit: string;
   gasPriceCurrency: string;
@@ -20,7 +20,7 @@ export interface Session {
   ended_at_user: string | null;
   distance_m: number;
   stopped_seconds: number;
-  fuel_grade: string;
+  fuel_type: string;
   gas_price_value: number | null;
   gas_price_unit: string | null;
   gas_price_currency: string | null;
@@ -42,14 +42,14 @@ export const sessionRepository = {
     const now = new Date().toISOString();
 
     await db.runAsync(
-      `INSERT INTO sessions (id, user_id, vehicle_id, started_at_user, distance_m, stopped_seconds, fuel_grade, gas_price_value, gas_price_unit, gas_price_currency, price_source, route_enabled, route_points_count, status, created_at, updated_at)
+      `INSERT INTO sessions (id, user_id, vehicle_id, started_at_user, distance_m, stopped_seconds, fuel_type, gas_price_value, gas_price_unit, gas_price_currency, price_source, route_enabled, route_points_count, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, 'manual', ?, 0, 'active', ?, ?)`,
       [
         id,
         input.userId,
         input.vehicleId,
         now,
-        input.fuelGrade,
+        input.fuelType,
         input.gasPriceValue,
         input.gasPriceUnit,
         input.gasPriceCurrency,
@@ -140,7 +140,7 @@ export const sessionRepository = {
     sessionId: string,
     updates: {
       vehicleId?: string;
-      fuelGrade?: string;
+      fuelType?: string;
       gasPriceValue?: number;
       gasPriceUnit?: string;
       notes?: string;
@@ -157,9 +157,9 @@ export const sessionRepository = {
       setClauses.push('vehicle_id = ?');
       values.push(updates.vehicleId);
     }
-    if (updates.fuelGrade !== undefined) {
-      setClauses.push('fuel_grade = ?');
-      values.push(updates.fuelGrade);
+    if (updates.fuelType !== undefined) {
+      setClauses.push('fuel_type = ?');
+      values.push(updates.fuelType);
     }
     if (updates.gasPriceValue !== undefined) {
       setClauses.push('gas_price_value = ?');

@@ -15,9 +15,9 @@ import { useStationStore } from '@/stores/stationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { GasStation } from '@/services/places/placesService';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
-import { FUEL_GRADES } from '@/utils/fuelGrades';
+import { FUEL_TYPES } from '@/utils/fuelTypes';
 import { detectBrand, getBrandLogoUrl } from '@/utils/stationBrands';
-import FuelGradePicker from '@/components/common/FuelGradePicker';
+import FuelTypePicker from '@/components/common/FuelTypePicker';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -69,17 +69,17 @@ const DETAIL_CIRCLE = 44;
 
 const DetailCard = React.memo(function DetailCard({
   station,
-  selectedFuelGrade,
+  selectedFuelType,
   distanceLabel,
   onUsePrice,
-  onSelectGrade,
+  onSelectType,
   bottomInset,
 }: {
   station: GasStation;
-  selectedFuelGrade: string;
+  selectedFuelType: string;
   distanceLabel: string;
   onUsePrice: () => void;
-  onSelectGrade: (grade: string) => void;
+  onSelectType: (grade: string) => void;
   bottomInset: number;
 }) {
   const brand = detectBrand(station.name);
@@ -89,14 +89,14 @@ const DetailCard = React.memo(function DetailCard({
   // Build a price-by-grade map once
   const priceByGrade = useMemo(() => {
     const map: Record<string, number | null> = {};
-    for (const g of FUEL_GRADES) {
-      const match = station.fuelPrices.find((p) => p.fuelGrade === g.value);
+    for (const g of FUEL_TYPES) {
+      const match = station.fuelPrices.find((p) => p.fuelType === g.value);
       map[g.value] = match ? match.priceValue : null;
     }
     return map;
   }, [station.fuelPrices]);
 
-  const hasSelectedPrice = priceByGrade[selectedFuelGrade] != null;
+  const hasSelectedPrice = priceByGrade[selectedFuelType] != null;
 
   return (
     <View style={[styles.detailCard, { paddingBottom: bottomInset + spacing.md }]}>
@@ -123,14 +123,14 @@ const DetailCard = React.memo(function DetailCard({
 
       {/* Prices per grade */}
       <View style={styles.pricesRow}>
-        {FUEL_GRADES.map((g) => {
+        {FUEL_TYPES.map((g) => {
           const price = priceByGrade[g.value];
-          const isSelected = g.value === selectedFuelGrade;
+          const isSelected = g.value === selectedFuelType;
           return (
             <TouchableOpacity
               key={g.value}
               style={[styles.priceChip, isSelected && styles.priceChipSelected]}
-              onPress={() => onSelectGrade(g.value)}
+              onPress={() => onSelectType(g.value)}
               activeOpacity={0.7}
             >
               <Text style={[styles.priceChipLabel, isSelected && styles.priceChipLabelSelected]}>
@@ -158,14 +158,14 @@ const DetailCard = React.memo(function DetailCard({
 export default function StationsMapScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ fuelGrade?: string }>();
+  const params = useLocalSearchParams<{ fuelType?: string }>();
 
   const stations = useStationStore((s) => s.stations);
   const userLocation = useStationStore((s) => s.userLocation);
   const setPendingSelection = useStationStore((s) => s.setPendingSelection);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
 
-  const [selectedFuelGrade, setSelectedFuelGrade] = useState(params.fuelGrade ?? 'regular');
+  const [selectedFuelType, setSelectedFuelType] = useState(params.fuelType ?? 'regular');
 
   // Marker lifecycle: loading → revealing → settled
   // 'loading'   — show "..." placeholder, tracksViewChanges=true
@@ -187,7 +187,7 @@ export default function StationsMapScreen() {
     const reveal = setTimeout(() => setMarkerPhase('revealing'), 300);
     const settle = setTimeout(() => setMarkerPhase('settled'), 700);
     return () => { clearTimeout(reveal); clearTimeout(settle); };
-  }, [selectedFuelGrade]);
+  }, [selectedFuelType]);
   const [selectedStation, setSelectedStation] = useState<GasStation | null>(null);
   const mapRef = useRef<MapView>(null);
 
@@ -202,19 +202,19 @@ export default function StationsMapScreen() {
 
   // Only show stations that have a price for the selected grade
   const visibleStations = useMemo(
-    () => stations.filter((s) => s.fuelPrices.some((p) => p.fuelGrade === selectedFuelGrade)),
-    [stations, selectedFuelGrade],
+    () => stations.filter((s) => s.fuelPrices.some((p) => p.fuelType === selectedFuelType)),
+    [stations, selectedFuelType],
   );
 
   // Pre-compute price labels so markers get stable string props
   const priceLabels = useMemo(() => {
     const map: Record<string, string> = {};
     for (const s of visibleStations) {
-      const match = s.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
+      const match = s.fuelPrices.find((p) => p.fuelType === selectedFuelType);
       map[s.placeId] = `$${match!.priceValue.toFixed(2)}`;
     }
     return map;
-  }, [visibleStations, selectedFuelGrade]);
+  }, [visibleStations, selectedFuelType]);
 
   // Stable callback — markers hold a reference to this
   const handleMarkerPress = useCallback((station: GasStation) => {
@@ -227,17 +227,17 @@ export default function StationsMapScreen() {
 
   const handleUsePrice = useCallback(() => {
     if (!selectedStation) return;
-    const priceMatch = selectedStation.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
+    const priceMatch = selectedStation.fuelPrices.find((p) => p.fuelType === selectedFuelType);
     if (priceMatch) {
       setPendingSelection({
         price: priceMatch.priceValue,
         stationName: selectedStation.name,
-        fuelGrade: selectedFuelGrade,
+        fuelType: selectedFuelType,
       });
     }
     // Small delay so Zustand subscribers fire before navigation
     setTimeout(() => router.back(), 50);
-  }, [selectedStation, selectedFuelGrade, setPendingSelection, router]);
+  }, [selectedStation, selectedFuelType, setPendingSelection, router]);
 
   const getDistanceLabel = useCallback(
     (station: GasStation): string => {
@@ -260,8 +260,8 @@ export default function StationsMapScreen() {
       </View>
 
       {/* Fuel Grade Picker */}
-      <View style={styles.fuelGradeBar}>
-        <FuelGradePicker selected={selectedFuelGrade} onSelect={setSelectedFuelGrade} />
+      <View style={styles.fuelTypeBar}>
+        <FuelTypePicker selected={selectedFuelType} onSelect={setSelectedFuelType} />
       </View>
 
       {/* Map */}
@@ -298,10 +298,10 @@ export default function StationsMapScreen() {
       {selectedStation && (
         <DetailCard
           station={selectedStation}
-          selectedFuelGrade={selectedFuelGrade}
+          selectedFuelType={selectedFuelType}
           distanceLabel={getDistanceLabel(selectedStation)}
           onUsePrice={handleUsePrice}
-          onSelectGrade={setSelectedFuelGrade}
+          onSelectType={setSelectedFuelType}
           bottomInset={insets.bottom}
         />
       )}
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: 2 },
   headerTitle: { ...typography.h3, color: colors.text },
-  fuelGradeBar: {
+  fuelTypeBar: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.surface,

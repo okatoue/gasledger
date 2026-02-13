@@ -28,7 +28,7 @@ export const syncService = {
           ended_at_user: session.ended_at_user,
           distance_m: session.distance_m,
           stopped_seconds: session.stopped_seconds,
-          fuel_grade: session.fuel_grade,
+          fuel_type: session.fuel_type,
           gas_price_value: session.gas_price_value,
           gas_price_unit: session.gas_price_unit,
           gas_price_currency: session.gas_price_currency,
@@ -227,11 +227,11 @@ export const syncService = {
 
       for (const s of remoteSessions) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO sessions (id, user_id, vehicle_id, started_at_user, started_at_tracking, ended_at_user, distance_m, stopped_seconds, fuel_grade, gas_price_value, gas_price_unit, gas_price_currency, price_source, est_fuel_used, est_cost, route_enabled, route_points_count, notes, status, created_at, updated_at)
+          `INSERT OR REPLACE INTO sessions (id, user_id, vehicle_id, started_at_user, started_at_tracking, ended_at_user, distance_m, stopped_seconds, fuel_type, gas_price_value, gas_price_unit, gas_price_currency, price_source, est_fuel_used, est_cost, route_enabled, route_points_count, notes, status, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             s.id, s.user_id, s.vehicle_id, s.started_at_user, s.started_at_tracking,
-            s.ended_at_user, s.distance_m, s.stopped_seconds, s.fuel_grade,
+            s.ended_at_user, s.distance_m, s.stopped_seconds, s.fuel_type,
             s.gas_price_value, s.gas_price_unit, s.gas_price_currency, s.price_source,
             s.est_fuel_used, s.est_cost, s.route_enabled ? 1 : 0,
             s.route_points_count, s.notes, s.status, s.created_at, s.updated_at,

@@ -19,9 +19,7 @@ interface NHTSAVariable {
 function normalizeFuelType(raw: string): string {
   const lower = raw.toLowerCase();
   if (lower.includes('diesel')) return 'diesel';
-  if (lower.includes('electric')) return 'electric';
-  if (lower.includes('flex') || lower.includes('ethanol')) return 'flex';
-  return 'gasoline';
+  return 'regular';
 }
 
 export async function decodeVin(vin: string): Promise<VinResult | null> {

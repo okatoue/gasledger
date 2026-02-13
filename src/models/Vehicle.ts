@@ -1,4 +1,4 @@
-import { EfficiencySource, EfficiencyUnit, FuelGrade, FuelType } from '@/models/enums';
+import { EfficiencySource, EfficiencyUnit, FuelType } from '@/models/enums';
 
 export interface Vehicle {
   id: string;
@@ -8,7 +8,6 @@ export interface Vehicle {
   model: string;
   year: number;
   fuel_type: FuelType;
-  default_fuel_grade: FuelGrade;
   efficiency_value: number;
   efficiency_unit: EfficiencyUnit;
   efficiency_source: EfficiencySource;

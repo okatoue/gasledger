@@ -52,14 +52,14 @@ export function useHomeStation(userId: string | undefined) {
     setHomeStation(updated);
   }, [userId, homeStation]);
 
-  const getPriceForGrade = useCallback(
-    (fuelGrade: string): number | null => {
+  const getPriceForType = useCallback(
+    (fuelType: string): number | null => {
       if (!homeStation?.cached_prices) return null;
-      const match = homeStation.cached_prices.find((p) => p.fuelGrade === fuelGrade);
+      const match = homeStation.cached_prices.find((p) => p.fuelType === fuelType);
       return match ? match.priceValue : null;
     },
     [homeStation],
   );
 
-  return { homeStation, isLoaded, setHome, removeHome, refreshPrice, getPriceForGrade };
+  return { homeStation, isLoaded, setHome, removeHome, refreshPrice, getPriceForType };
 }

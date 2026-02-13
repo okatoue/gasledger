@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { FUEL_GRADES } from '@/utils/fuelGrades';
+import { FUEL_TYPES } from '@/utils/fuelTypes';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
-interface FuelGradePickerProps {
+interface FuelTypePickerProps {
   selected: string;
-  onSelect: (grade: string) => void;
+  onSelect: (type: string) => void;
 }
 
-function FuelGradePicker({ selected, onSelect }: FuelGradePickerProps) {
+function FuelTypePicker({ selected, onSelect }: FuelTypePickerProps) {
   return (
     <View style={styles.row}>
-      {FUEL_GRADES.map((g) => {
+      {FUEL_TYPES.map((g) => {
         const active = g.value === selected;
         return (
           <TouchableOpacity
@@ -31,7 +31,7 @@ function FuelGradePicker({ selected, onSelect }: FuelGradePickerProps) {
   );
 }
 
-export default React.memo(FuelGradePicker);
+export default React.memo(FuelTypePicker);
 
 const styles = StyleSheet.create({
   row: {

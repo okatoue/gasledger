@@ -26,7 +26,7 @@ import { lastPriceRepository } from '@/db/repositories/lastPriceRepository';
 import { formatDurationTimer, formatDistance, formatCurrency } from '@/utils/formatting';
 import LocationModeModal from '@/components/session/LocationModeModal';
 import NearbyStationsBar from '@/components/station/NearbyStationsBar';
-import FuelGradePicker from '@/components/common/FuelGradePicker';
+import FuelTypePicker from '@/components/common/FuelTypePicker';
 import { useStationStore } from '@/stores/stationStore';
 import { useLocationPermission } from '@/hooks/useLocationPermission';
 import { colors } from '@/theme/colors';
@@ -52,8 +52,8 @@ function ParkedDashboard({
   vehicle,
   distanceUnit,
   volumeUnit,
-  selectedFuelGrade,
-  onChangeFuelGrade,
+  selectedFuelType,
+  onChangeFuelType,
   homeStationName,
   priceSource,
   stations,
@@ -70,8 +70,8 @@ function ParkedDashboard({
   vehicle: Vehicle;
   distanceUnit: 'mi' | 'km';
   volumeUnit: 'gal' | 'l';
-  selectedFuelGrade: string;
-  onChangeFuelGrade: (grade: string) => void;
+  selectedFuelType: string;
+  onChangeFuelType: (grade: string) => void;
   homeStationName: string | null;
   priceSource: string;
   stations: import('@/services/places/placesService').GasStation[];
@@ -119,7 +119,7 @@ function ParkedDashboard({
       {/* Fuel / Price / Stations Card */}
       <View style={styles.fuelPriceCard}>
         {/* Fuel Grade Picker */}
-        <FuelGradePicker selected={selectedFuelGrade} onSelect={onChangeFuelGrade} />
+        <FuelTypePicker selected={selectedFuelType} onSelect={onChangeFuelType} />
 
         <View style={styles.fuelPriceDivider} />
 
@@ -166,7 +166,7 @@ function ParkedDashboard({
           stations={stations}
           isLoading={stationsLoading}
           error={stationsError}
-          selectedFuelGrade={selectedFuelGrade}
+          selectedFuelType={selectedFuelType}
           distanceUnit={distanceUnit}
           homeStationPlaceId={homeStationPlaceId}
           onSelectPrice={onSelectStationPrice}
@@ -383,7 +383,7 @@ export default function DashboardScreen() {
   const [locationModeModalVisible, setLocationModeModalVisible] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [selectedFuelGrade, setSelectedFuelGrade] = useState<string>('regular');
+  const [selectedFuelType, setSelectedFuelType] = useState<string>('regular');
 
   const homeStation = useHomeStation(session?.user.id);
   const nearbyStations = useNearbyStations();
@@ -403,11 +403,11 @@ export default function DashboardScreen() {
     nearbyStations.refresh();
   }, []);
 
-  const homeStationPrice = homeStation.getPriceForGrade(selectedFuelGrade);
+  const homeStationPrice = homeStation.getPriceForType(selectedFuelType);
 
   const { gasPrice, setGasPrice, priceSource } = useGasPrice(
     selectedVehicle?.id ?? null,
-    selectedFuelGrade,
+    selectedFuelType,
     homeStationPrice,
   );
 
@@ -417,7 +417,7 @@ export default function DashboardScreen() {
       setVehicles(data);
       if (data.length > 0) {
         setSelectedVehicle(data[0]);
-        setSelectedFuelGrade(data[0].default_fuel_grade || 'regular');
+        setSelectedFuelType(data[0].fuel_type || 'regular');
       }
     });
   }, [session]);
@@ -425,7 +425,7 @@ export default function DashboardScreen() {
   // Reset fuel grade when vehicle changes
   useEffect(() => {
     if (selectedVehicle) {
-      setSelectedFuelGrade(selectedVehicle.default_fuel_grade || 'regular');
+      setSelectedFuelType(selectedVehicle.fuel_type || 'regular');
     }
   }, [selectedVehicle?.id]);
 
@@ -443,7 +443,7 @@ export default function DashboardScreen() {
     const result = await startTracking({
       userId: session.user.id,
       vehicleId: selectedVehicle.id,
-      fuelGrade: selectedFuelGrade,
+      fuelType: selectedFuelType,
       gasPriceValue: gasPrice,
       gasPriceUnit: volumeUnit === 'gal' ? 'per_gal' : 'per_l',
       gasPriceCurrency: 'usd',
@@ -465,7 +465,7 @@ export default function DashboardScreen() {
     const result = await startTracking({
       userId: session.user.id,
       vehicleId: selectedVehicle.id,
-      fuelGrade: selectedFuelGrade,
+      fuelType: selectedFuelType,
       gasPriceValue: gasPrice,
       gasPriceUnit: volumeUnit === 'gal' ? 'per_gal' : 'per_l',
       gasPriceCurrency: 'usd',
@@ -483,7 +483,7 @@ export default function DashboardScreen() {
     if (selectedVehicle) {
       lastPriceRepository.upsert(
         selectedVehicle.id,
-        selectedFuelGrade,
+        selectedFuelType,
         price,
         volumeUnit === 'gal' ? 'per_gal' : 'per_l',
         'usd',
@@ -494,22 +494,22 @@ export default function DashboardScreen() {
   // Consume pending price selection from map
   useEffect(() => {
     if (!pendingSelection || !selectedVehicle) return;
-    const { price, fuelGrade } = pendingSelection;
+    const { price, fuelType } = pendingSelection;
     clearPendingSelection();
 
     const apply = async () => {
-      // Persist first so useGasPrice finds it when the grade changes
+      // Persist first so useGasPrice finds it when the type changes
       await lastPriceRepository.upsert(
         selectedVehicle.id,
-        fuelGrade,
+        fuelType,
         price,
         volumeUnit === 'gal' ? 'per_gal' : 'per_l',
         'usd',
       ).catch(() => {});
 
-      if (fuelGrade !== selectedFuelGrade) {
-        // Switching grade triggers useGasPrice which reads the DB
-        setSelectedFuelGrade(fuelGrade);
+      if (fuelType !== selectedFuelType) {
+        // Switching type triggers useGasPrice which reads the DB
+        setSelectedFuelType(fuelType);
       } else {
         // Same grade — update price directly
         setGasPrice(price);
@@ -546,8 +546,8 @@ export default function DashboardScreen() {
           vehicle={selectedVehicle}
           distanceUnit={distanceUnit}
           volumeUnit={volumeUnit}
-          selectedFuelGrade={selectedFuelGrade}
-          onChangeFuelGrade={setSelectedFuelGrade}
+          selectedFuelType={selectedFuelType}
+          onChangeFuelType={setSelectedFuelType}
           homeStationName={homeStation.homeStation?.name ?? null}
           priceSource={priceSource}
           stations={nearbyStations.stations}

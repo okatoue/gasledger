@@ -21,18 +21,18 @@ import { spacing, borderRadius } from '@/theme/spacing';
 // ── Memoized station card ──
 const StationCard = React.memo(function StationCard({
   station,
-  selectedFuelGrade,
+  selectedFuelType,
   distanceUnit,
   isHome,
   onSelectPrice,
 }: {
   station: GasStation;
-  selectedFuelGrade: string;
+  selectedFuelType: string;
   distanceUnit: 'mi' | 'km';
   isHome: boolean;
   onSelectPrice: (price: number) => void;
 }) {
-  const priceMatch = station.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
+  const priceMatch = station.fuelPrices.find((p) => p.fuelType === selectedFuelType);
   const distance =
     distanceUnit === 'mi'
       ? metersToMiles(station.distanceM).toFixed(1)
@@ -88,7 +88,7 @@ interface NearbyStationsBarProps {
   stations: GasStation[];
   isLoading: boolean;
   error: string | null;
-  selectedFuelGrade: string;
+  selectedFuelType: string;
   distanceUnit: 'mi' | 'km';
   homeStationPlaceId: string | null;
   onSelectPrice: (price: number) => void;
@@ -112,7 +112,7 @@ function NearbyStationsBar({
   stations,
   isLoading,
   error,
-  selectedFuelGrade,
+  selectedFuelType,
   distanceUnit,
   homeStationPlaceId,
   onSelectPrice,
@@ -132,36 +132,36 @@ function NearbyStationsBar({
     setTransitioning(true);
     const timer = setTimeout(() => setTransitioning(false), 300);
     return () => clearTimeout(timer);
-  }, [selectedFuelGrade]);
+  }, [selectedFuelType]);
 
   // Only show stations that have a price for the selected grade, sorted by active mode
   const visibleStations = useMemo(() => {
-    const filtered = stations.filter((s) => s.fuelPrices.some((p) => p.fuelGrade === selectedFuelGrade));
+    const filtered = stations.filter((s) => s.fuelPrices.some((p) => p.fuelType === selectedFuelType));
     if (sortMode === 'price') {
       return [...filtered].sort((a, b) => {
-        const aPrice = a.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade)?.priceValue ?? Infinity;
-        const bPrice = b.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade)?.priceValue ?? Infinity;
+        const aPrice = a.fuelPrices.find((p) => p.fuelType === selectedFuelType)?.priceValue ?? Infinity;
+        const bPrice = b.fuelPrices.find((p) => p.fuelType === selectedFuelType)?.priceValue ?? Infinity;
         return aPrice - bPrice;
       });
     }
     return filtered;
-  }, [stations, selectedFuelGrade, sortMode]);
+  }, [stations, selectedFuelType, sortMode]);
 
   const handleSeeMap = useCallback(() => {
-    router.push({ pathname: '/stations/map', params: { fuelGrade: selectedFuelGrade } });
-  }, [router, selectedFuelGrade]);
+    router.push({ pathname: '/stations/map', params: { fuelType: selectedFuelType } });
+  }, [router, selectedFuelType]);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<GasStation>) => (
       <StationCard
         station={item}
-        selectedFuelGrade={selectedFuelGrade}
+        selectedFuelType={selectedFuelType}
         distanceUnit={distanceUnit}
         isHome={item.placeId === homeStationPlaceId}
         onSelectPrice={onSelectPrice}
       />
     ),
-    [selectedFuelGrade, distanceUnit, homeStationPlaceId, onSelectPrice],
+    [selectedFuelType, distanceUnit, homeStationPlaceId, onSelectPrice],
   );
 
   return (
@@ -223,7 +223,7 @@ function NearbyStationsBar({
       ) : visibleStations.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="pricetag-outline" size={24} color={colors.textTertiary} />
-          <Text style={styles.centeredText}>No prices for this fuel grade</Text>
+          <Text style={styles.centeredText}>No prices for this fuel type</Text>
         </View>
       ) : (
         <FlatList

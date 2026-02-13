@@ -1,15 +1,8 @@
 export enum FuelType {
-  Gasoline = 'gasoline',
-  Diesel = 'diesel',
-  Other = 'other',
-}
-
-export enum FuelGrade {
   Regular = 'regular',
   Midgrade = 'midgrade',
   Premium = 'premium',
   Diesel = 'diesel',
-  Other = 'other',
 }
 
 export enum PriceSource {

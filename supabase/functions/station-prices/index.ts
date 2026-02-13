@@ -25,7 +25,7 @@ function parseGoogleMoney(money: { units?: string; nanos?: number; currencyCode?
 }
 
 interface StationFuelPrice {
-  fuelGrade: string;
+  fuelType: string;
   priceValue: number;
   currencyCode: string;
   updatedAt: string | null;
@@ -50,7 +50,7 @@ function parseFuelPrices(fuelOptions?: { fuelPrices?: any[] }): StationFuelPrice
     const { value, currencyCode } = parseGoogleMoney(fp.price);
     if (value <= 0) continue;
     prices.push({
-      fuelGrade: grade,
+      fuelType: grade,
       priceValue: value,
       currencyCode,
       updatedAt: fp.updateTime ?? null,
@@ -97,7 +97,7 @@ serve(async (req) => {
         longitude: Number(first.longitude),
         distanceM: 0,
         fuelPrices: cached.map((r: any) => ({
-          fuelGrade: r.fuel_grade,
+          fuelType: r.fuel_type,
           priceValue: Number(r.price_value),
           currencyCode: r.currency_code,
           updatedAt: r.source_updated_at,
@@ -162,7 +162,7 @@ serve(async (req) => {
     // Upsert prices into cache
     const upsertRows = fuelPrices.map((fp) => ({
       place_id: station.placeId,
-      fuel_grade: fp.fuelGrade,
+      fuel_type: fp.fuelType,
       price_value: fp.priceValue,
       currency_code: fp.currencyCode,
       station_name: station.name,
@@ -177,7 +177,7 @@ serve(async (req) => {
     if (upsertRows.length > 0) {
       await supabase
         .from('station_prices')
-        .upsert(upsertRows, { onConflict: 'place_id,fuel_grade' });
+        .upsert(upsertRows, { onConflict: 'place_id,fuel_type' });
     }
 
     return new Response(JSON.stringify(station), {

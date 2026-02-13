@@ -10,7 +10,7 @@ import { spacing, borderRadius } from '@/theme/spacing';
 
 interface StationRowProps {
   station: GasStation;
-  selectedFuelGrade: string;
+  selectedFuelType: string;
   isHome: boolean;
   distanceUnit: 'mi' | 'km';
   onSelect: () => void;
@@ -21,13 +21,13 @@ const CIRCLE_SIZE = 40;
 
 export default function StationRow({
   station,
-  selectedFuelGrade,
+  selectedFuelType,
   isHome,
   distanceUnit,
   onSelect,
   onToggleHome,
 }: StationRowProps) {
-  const priceMatch = station.fuelPrices.find((p) => p.fuelGrade === selectedFuelGrade);
+  const priceMatch = station.fuelPrices.find((p) => p.fuelType === selectedFuelType);
   const distance =
     distanceUnit === 'mi'
       ? metersToMiles(station.distanceM).toFixed(1)

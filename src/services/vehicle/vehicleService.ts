@@ -8,7 +8,6 @@ export interface Vehicle {
   model: string;
   year: number;
   fuel_type: string;
-  default_fuel_grade: string;
   efficiency_value: number;
   efficiency_unit: string;
   efficiency_source: string;
@@ -24,7 +23,6 @@ export interface CreateVehicleInput {
   model: string;
   year: number;
   fuel_type?: string;
-  default_fuel_grade?: string;
   efficiency_value?: number;
   efficiency_unit?: string;
   efficiency_source?: string;
@@ -51,8 +49,7 @@ export const vehicleService = {
         make: input.make,
         model: input.model,
         year: input.year,
-        fuel_type: input.fuel_type ?? 'gasoline',
-        default_fuel_grade: input.default_fuel_grade ?? 'regular',
+        fuel_type: input.fuel_type ?? 'regular',
         efficiency_value: input.efficiency_value ?? 0,
         efficiency_unit: input.efficiency_unit ?? 'mpg',
         efficiency_source: input.efficiency_source ?? 'manual',
@@ -99,7 +96,7 @@ export const vehicleService = {
 
   async update(
     vehicleId: string,
-    updates: Partial<Pick<Vehicle, 'efficiency_value' | 'efficiency_unit' | 'default_fuel_grade'>>,
+    updates: Partial<Pick<Vehicle, 'efficiency_value' | 'efficiency_unit' | 'fuel_type'>>,
   ): Promise<Vehicle> {
     const { data, error } = await supabase
       .from('vehicles')
