@@ -76,7 +76,9 @@ serve(async (req) => {
   }
 
   try {
-    const { latitude, longitude, radiusM = 10000, maxResults = 20 } = await req.json();
+    const body = await req.json();
+    const { latitude, longitude, radiusM = 10000, maxResults = 20 } = body;
+    console.log('[nearby-stations] request:', JSON.stringify({ latitude, longitude, radiusM, maxResults }));
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       return new Response(JSON.stringify({ error: 'latitude and longitude are required' }), {
@@ -106,6 +108,8 @@ serve(async (req) => {
       .lte('longitude', longitude + lonDelta)
       .gte('updated_at', freshThreshold);
 
+    console.log('[nearby-stations] cache query — error:', cacheError?.message ?? 'none', 'rows:', cached?.length ?? 0);
+
     // Group cached rows by place_id
     const stationMap = new Map<string, typeof cached>();
     if (cached && cached.length > 0) {
@@ -116,8 +120,11 @@ serve(async (req) => {
       }
     }
 
+    console.log('[nearby-stations] cached unique stations:', stationMap.size, 'need:', maxResults);
+
     // If we have enough fresh cached stations, return them directly
     if (stationMap.size >= maxResults) {
+      console.log('[nearby-stations] returning from cache');
       const stations: GasStation[] = [];
       for (const [placeId, rows] of stationMap) {
         const first = rows[0];
@@ -145,10 +152,12 @@ serve(async (req) => {
     // Cache miss or not enough results — call Google Places API
     const googleApiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
     if (!googleApiKey) {
+      console.error('[nearby-stations] GOOGLE_PLACES_API_KEY not set!');
       return new Response(JSON.stringify([]), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
+    console.log('[nearby-stations] calling Google Places API...');
 
     const googleRes = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
       method: 'POST',
@@ -160,7 +169,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         includedTypes: ['gas_station'],
-        maxResultCount: maxResults,
+        maxResultCount: Math.min(maxResults, 20),
+        rankPreference: 'DISTANCE',
         locationRestriction: {
           circle: {
             center: { latitude, longitude },
@@ -171,13 +181,17 @@ serve(async (req) => {
     });
 
     if (!googleRes.ok) {
+      const errBody = await googleRes.text();
+      console.error('[nearby-stations] Google API error:', googleRes.status, errBody);
       return new Response(JSON.stringify([]), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
     const data = await googleRes.json();
+    console.log('[nearby-stations] Google returned', data.places?.length ?? 0, 'places');
     if (!data.places || !Array.isArray(data.places)) {
+      console.warn('[nearby-stations] no places array in response');
       return new Response(JSON.stringify([]), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
@@ -238,6 +252,8 @@ serve(async (req) => {
     }
 
     stations.sort((a, b) => a.distanceM - b.distanceM);
+    const withPrices = stations.filter(s => s.fuelPrices.length > 0).length;
+    console.log('[nearby-stations] returning', stations.length, 'stations,', withPrices, 'with prices');
     return new Response(JSON.stringify(stations), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });

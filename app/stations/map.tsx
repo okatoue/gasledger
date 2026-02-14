@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { useStationStore } from '@/stores/stationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { GasStation } from '@/services/places/placesService';
@@ -18,6 +19,8 @@ import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
 import { FUEL_TYPES } from '@/utils/fuelTypes';
 import { detectBrand, getBrandLogoUrl } from '@/utils/stationBrands';
 import FuelTypePicker from '@/components/common/FuelTypePicker';
+import { useHomeStation } from '@/hooks/useHomeStation';
+import { useAuthStore } from '@/stores/authStore';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -71,14 +74,18 @@ const DetailCard = React.memo(function DetailCard({
   station,
   selectedFuelType,
   distanceLabel,
+  isHome,
   onUsePrice,
+  onToggleHome,
   onSelectType,
   bottomInset,
 }: {
   station: GasStation;
   selectedFuelType: string;
   distanceLabel: string;
+  isHome: boolean;
   onUsePrice: () => void;
+  onToggleHome: () => void;
   onSelectType: (grade: string) => void;
   bottomInset: number;
 }) {
@@ -144,13 +151,26 @@ const DetailCard = React.memo(function DetailCard({
         })}
       </View>
 
-      {/* Use This Price button */}
-      {hasSelectedPrice && (
-        <TouchableOpacity style={styles.useButton} onPress={onUsePrice} activeOpacity={0.8}>
-          <Ionicons name="pricetag" size={18} color={colors.white} />
-          <Text style={styles.useButtonText}>Use This Price</Text>
+      {/* Action buttons */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[styles.homeButton, isHome && styles.homeButtonActive]}
+          onPress={onToggleHome}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={isHome ? 'star' : 'star-outline'} size={16} color={isHome ? colors.warning : colors.textSecondary} />
+          <Text style={[styles.homeButtonText, isHome && styles.homeButtonTextActive]}>
+            {isHome ? 'Remove Home' : 'Set as Home'}
+          </Text>
         </TouchableOpacity>
-      )}
+
+        {hasSelectedPrice && (
+          <TouchableOpacity style={[styles.useButton, { flex: 1 }]} onPress={onUsePrice} activeOpacity={0.8}>
+            <Ionicons name="pricetag" size={18} color={colors.white} />
+            <Text style={styles.useButtonText}>Use This Price</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 });
@@ -164,6 +184,8 @@ export default function StationsMapScreen() {
   const userLocation = useStationStore((s) => s.userLocation);
   const setPendingSelection = useStationStore((s) => s.setPendingSelection);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
+  const session = useAuthStore((s) => s.session);
+  const { homeStation, setHome, removeHome } = useHomeStation(session?.user.id);
 
   const [selectedFuelType, setSelectedFuelType] = useState(params.fuelType ?? 'regular');
 
@@ -191,10 +213,44 @@ export default function StationsMapScreen() {
   const [selectedStation, setSelectedStation] = useState<GasStation | null>(null);
   const mapRef = useRef<MapView>(null);
 
-  const initialRegion: Region | undefined = userLocation
+  // Fresh GPS position, falling back to stale stationStore.userLocation
+  const [currentLocation, setCurrentLocation] = useState(userLocation);
+
+  useEffect(() => {
+    let cancelled = false;
+    console.log('[map] GPS effect starting, fallback userLocation:', userLocation);
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        console.log('[map] location permission status:', status);
+        if (status !== 'granted') return;
+        let pos: Location.LocationObject | null = null;
+        try {
+          pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+        } catch {
+          pos = await Location.getLastKnownPositionAsync();
+        }
+        if (!pos) return;
+        console.log('[map] got fresh GPS:', pos.coords.latitude, pos.coords.longitude);
+        if (!cancelled) {
+          setCurrentLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+        }
+      } catch (err) {
+        console.error('[map] GPS error:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const initialRegion: Region | undefined = currentLocation
     ? {
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
         latitudeDelta: 0.05,
         longitudeDelta: 0.05,
       }
@@ -238,6 +294,15 @@ export default function StationsMapScreen() {
     // Small delay so Zustand subscribers fire before navigation
     setTimeout(() => router.back(), 50);
   }, [selectedStation, selectedFuelType, setPendingSelection, router]);
+
+  const handleToggleHome = useCallback(() => {
+    if (!selectedStation) return;
+    if (selectedStation.placeId === homeStation?.place_id) {
+      removeHome();
+    } else {
+      setHome(selectedStation);
+    }
+  }, [selectedStation, homeStation?.place_id, setHome, removeHome]);
 
   const getDistanceLabel = useCallback(
     (station: GasStation): string => {
@@ -300,7 +365,9 @@ export default function StationsMapScreen() {
           station={selectedStation}
           selectedFuelType={selectedFuelType}
           distanceLabel={getDistanceLabel(selectedStation)}
+          isHome={selectedStation.placeId === homeStation?.place_id}
           onUsePrice={handleUsePrice}
+          onToggleHome={handleToggleHome}
           onSelectType={setSelectedFuelType}
           bottomInset={insets.bottom}
         />
@@ -423,6 +490,36 @@ const styles = StyleSheet.create({
   priceChipLabelSelected: { color: 'rgba(255,255,255,0.8)' },
   priceChipValue: { ...typography.label, color: colors.text, fontWeight: '700' },
   priceChipValueSelected: { color: colors.white },
+
+  // ── Action Row ──
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  homeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
+  },
+  homeButtonActive: {
+    borderColor: colors.warning,
+    backgroundColor: 'rgba(255, 193, 7, 0.08)',
+  },
+  homeButtonText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  homeButtonTextActive: {
+    color: colors.warning,
+  },
 
   // ── Use Button ──
   useButton: {

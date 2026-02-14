@@ -25,12 +25,14 @@ const StationCard = React.memo(function StationCard({
   distanceUnit,
   isHome,
   onSelectPrice,
+  onToggleHome,
 }: {
   station: GasStation;
   selectedFuelType: string;
   distanceUnit: 'mi' | 'km';
   isHome: boolean;
   onSelectPrice: (price: number) => void;
+  onToggleHome: () => void;
 }) {
   const priceMatch = station.fuelPrices.find((p) => p.fuelType === selectedFuelType);
   const distance =
@@ -46,7 +48,7 @@ const StationCard = React.memo(function StationCard({
   }, [priceMatch, onSelectPrice]);
 
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress} onLongPress={onToggleHome}>
       {/* Circular brand icon */}
       <View style={styles.brandWrapper}>
         <View style={[styles.brandCircle, { backgroundColor: logoUrl && !logoError ? '#FFFFFF' : brand.bgColor }]}>
@@ -116,6 +118,7 @@ function NearbyStationsBar({
   distanceUnit,
   homeStationPlaceId,
   onSelectPrice,
+  onToggleHome,
   embedded,
 }: NearbyStationsBarProps) {
   const router = useRouter();
@@ -159,9 +162,10 @@ function NearbyStationsBar({
         distanceUnit={distanceUnit}
         isHome={item.placeId === homeStationPlaceId}
         onSelectPrice={onSelectPrice}
+        onToggleHome={() => onToggleHome(item)}
       />
     ),
-    [selectedFuelType, distanceUnit, homeStationPlaceId, onSelectPrice],
+    [selectedFuelType, distanceUnit, homeStationPlaceId, onSelectPrice, onToggleHome],
   );
 
   return (

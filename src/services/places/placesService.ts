@@ -68,7 +68,8 @@ export async function searchNearbyGasStations(
 
     allStations.sort((a, b) => a.distanceM - b.distanceM);
     return allStations;
-  } catch {
+  } catch (err) {
+    console.error('[placesService] searchNearbyGasStations error:', err);
     return [];
   }
 }
