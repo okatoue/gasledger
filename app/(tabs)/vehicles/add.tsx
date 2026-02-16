@@ -18,6 +18,8 @@ import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { vehicleService } from '@/services/vehicle/vehicleService';
 import { useAuthStore } from '@/stores/authStore';
+import { useVehicleStore } from '@/stores/vehicleStore';
+import { useSubscription } from '@/hooks/useSubscription';
 import { decodeVin, VinResult } from '@/services/vehicle/vinDecoder';
 import { useFuelEconomyLookup } from '@/hooks/useFuelEconomyLookup';
 import { normalizeFuelInfo } from '@/services/vehicle/fuelEconomyApi';
@@ -27,6 +29,8 @@ type Tab = 'scan' | 'manual';
 
 export default function AddVehicleScreen() {
   const router = useRouter();
+  const { isPro } = useSubscription();
+  const vehicleCount = useVehicleStore((s) => s.vehicles.length);
   const [activeTab, setActiveTab] = useState<Tab>('scan');
   const [vin, setVin] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -125,6 +129,34 @@ export default function AddVehicleScreen() {
       setIsSaving(false);
     }
   };
+
+  if (!isPro && vehicleCount >= 1) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.scrollContent}>
+          <View style={styles.card}>
+            <View style={{ alignItems: 'center', padding: spacing.lg }}>
+              <Ionicons name="car-sport" size={48} color={colors.textTertiary} />
+              <Text style={{ ...typography.h3, color: colors.text, marginTop: spacing.md, textAlign: 'center' }}>
+                Vehicle Limit Reached
+              </Text>
+              <Text style={{ ...typography.body, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm }}>
+                Free accounts are limited to 1 vehicle. Upgrade to Pro for unlimited vehicles.
+              </Text>
+              <TouchableOpacity
+                style={[styles.primaryButton, { marginTop: spacing.lg, flexDirection: 'row', gap: 8 }]}
+                activeOpacity={0.8}
+                onPress={() => router.push('/pro')}
+              >
+                <Ionicons name="diamond-outline" size={18} color={colors.white} />
+                <Text style={styles.primaryButtonText}>Upgrade to Pro</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView

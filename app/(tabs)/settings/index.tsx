@@ -7,6 +7,8 @@ import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { deleteDatabase } from '@/db/database';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { supabase } from '@/config/supabase';
 import { vehicleService } from '@/services/vehicle/vehicleService';
 
@@ -22,6 +24,7 @@ function NavRow({ label, icon, onPress }: { label: string; icon: string; onPress
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { isPro } = useSubscription();
   const [isClearing, setIsClearing] = useState(false);
 
   const handleClearStorage = () => {
@@ -54,6 +57,17 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Pro section */}
+      <View style={styles.section}>
+        <View style={styles.navCard}>
+          <NavRow
+            label={isPro ? 'GasLedger Pro (Active)' : 'Upgrade to Pro'}
+            icon="diamond-outline"
+            onPress={() => router.push('/pro')}
+          />
+        </View>
+      </View>
+
       {/* Navigation section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferences</Text>
@@ -79,15 +93,38 @@ export default function SettingsScreen() {
       {/* Data section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Data</Text>
-        <TouchableOpacity
-          style={styles.destructiveButton}
-          onPress={handleClearStorage}
-          disabled={isClearing}
-        >
-          <Text style={styles.destructiveButtonText}>
-            {isClearing ? 'Clearing...' : 'Clear App Storage'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.destructiveRow}>
+          <TouchableOpacity
+            style={[styles.destructiveButton, { flex: 1 }]}
+            onPress={handleClearStorage}
+            disabled={isClearing}
+          >
+            <Text style={styles.destructiveButtonText}>
+              {isClearing ? 'Clearing...' : 'Clear App Storage'}
+            </Text>
+          </TouchableOpacity>
+          {isPro && (
+            <TouchableOpacity
+              style={[styles.destructiveButton, { flex: 1, backgroundColor: colors.warning }]}
+              onPress={() => {
+                Alert.alert(
+                  'Remove Pro',
+                  'This will remove Pro status locally (for testing). It does not cancel a real subscription.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Remove',
+                      style: 'destructive',
+                      onPress: () => useSubscriptionStore.getState().removePro(),
+                    },
+                  ],
+                );
+              }}
+            >
+              <Text style={styles.destructiveButtonText}>Remove Pro</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.hint}>
           Deletes all local data and signs you out.
         </Text>
@@ -123,6 +160,10 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm + 2,
   },
 
+  destructiveRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
   destructiveButton: {
     backgroundColor: colors.error,
     paddingVertical: spacing.md,

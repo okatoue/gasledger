@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,15 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
 import { trackingGapRepository, TrackingGap } from '@/db/repositories/trackingGapRepository';
+import { routePointRepository, RoutePoint } from '@/db/repositories/routePointRepository';
 import { syncService } from '@/services/sync/syncService';
 import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
 import { useAuthStore } from '@/stores/authStore';
@@ -37,6 +40,7 @@ export default function SessionDetailScreen() {
   const [session, setSession] = useState<Session | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [gaps, setGaps] = useState<TrackingGap[]>([]);
+  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,6 +68,9 @@ export default function SessionDetailScreen() {
       }
       setVehicles(v);
       setGaps(g);
+      // Fetch route points separately to avoid nested transaction conflicts
+      const rp = await routePointRepository.getBySession(id);
+      setRoutePoints(rp);
     } catch (error) {
       console.error('[SessionDetail] Load failed:', error);
     } finally {
@@ -134,6 +141,32 @@ export default function SessionDetailScreen() {
     );
   };
 
+  const routeCoords = useMemo(
+    () => routePoints.map((p) => ({ latitude: p.latitude, longitude: p.longitude })),
+    [routePoints],
+  );
+
+  const mapRegion = useMemo(() => {
+    if (routeCoords.length === 0) return undefined;
+    let minLat = routeCoords[0].latitude;
+    let maxLat = routeCoords[0].latitude;
+    let minLng = routeCoords[0].longitude;
+    let maxLng = routeCoords[0].longitude;
+    for (const c of routeCoords) {
+      if (c.latitude < minLat) minLat = c.latitude;
+      if (c.latitude > maxLat) maxLat = c.latitude;
+      if (c.longitude < minLng) minLng = c.longitude;
+      if (c.longitude > maxLng) maxLng = c.longitude;
+    }
+    const pad = 0.01;
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: Math.max(maxLat - minLat, 0.005) + pad,
+      longitudeDelta: Math.max(maxLng - minLng, 0.005) + pad,
+    };
+  }, [routeCoords]);
+
   if (loading || !session) {
     return (
       <View style={styles.centered}>
@@ -159,6 +192,8 @@ export default function SessionDetailScreen() {
     text: `${v.year} ${v.make} ${v.model}`,
     value: v.id,
   }));
+
+  const showMap = session.route_enabled === 1 && routeCoords.length > 0 && mapRegion;
 
   let dateLabel = '';
   try {
@@ -201,6 +236,37 @@ export default function SessionDetailScreen() {
           <Text style={styles.statLabel}>Fuel Used</Text>
         </View>
       </View>
+
+      {/* Route map */}
+      {showMap && (
+        <View style={styles.mapCard} pointerEvents="none">
+          <MapView
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            style={StyleSheet.absoluteFill}
+            initialRegion={mapRegion}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            toolbarEnabled={false}
+            liteMode={Platform.OS === 'android'}
+          >
+            <Polyline
+              coordinates={routeCoords}
+              strokeColor={colors.primary}
+              strokeWidth={3}
+            />
+            <Marker
+              coordinate={routeCoords[0]}
+              pinColor="green"
+            />
+            <Marker
+              coordinate={routeCoords[routeCoords.length - 1]}
+              pinColor="red"
+            />
+          </MapView>
+        </View>
+      )}
 
       {/* Details / Edit section */}
       {editing ? (
@@ -282,12 +348,6 @@ export default function SessionDetailScreen() {
             <Text style={styles.detailLabel}>Vehicle</Text>
             <Text style={styles.detailValue}>{vehicleLabel}</Text>
           </View>
-          {session.route_enabled === 1 && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Route Points</Text>
-              <Text style={styles.detailValue}>{session.route_points_count}</Text>
-            </View>
-          )}
         </View>
       )}
 
@@ -392,6 +452,22 @@ const styles = StyleSheet.create({
   statValue: { ...typography.h3, color: colors.text, marginTop: 6 },
   statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
 
+  mapCard: {
+    height: 200,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  routeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
   detailsCard: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,

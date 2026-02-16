@@ -1,6 +1,6 @@
 import '@/services/tracking/backgroundTask';
 import { useEffect } from 'react';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDatabase } from '@/hooks/useDatabase';
@@ -11,6 +11,7 @@ import { sessionRepository } from '@/db/repositories/sessionRepository';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useVehicleStore } from '@/stores/vehicleStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { trackingService } from '@/services/tracking/trackingService';
 import { syncService } from '@/services/sync/syncService';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -76,6 +77,9 @@ export default function RootLayout() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (!session) {
+        useSubscriptionStore.getState().logout();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -87,6 +91,7 @@ export default function RootLayout() {
     if (!dbReady || !session) return;
     useSettingsStore.getState().loadSettings(session.user.id);
     useVehicleStore.getState().loadVehicles(session.user.id);
+    useSubscriptionStore.getState().initialize(session.user.id);
   }, [dbReady, session]);
 
   // Sync: flush queue on startup + restore from cloud on fresh install
@@ -139,7 +144,13 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <StatusBar style="auto" />
       <AuthGate>
-        <Slot />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="session" />
+          <Stack.Screen name="stations" />
+          <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
+        </Stack>
       </AuthGate>
     </QueryClientProvider>
   );

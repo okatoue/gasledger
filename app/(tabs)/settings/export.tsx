@@ -16,6 +16,7 @@ import { sessionRepository, Session } from '@/db/repositories/sessionRepository'
 import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
 import { exportSessionsCsv } from '@/services/export/csvExporter';
 import DropdownPicker from '@/components/common/Select';
+import ProGate from '@/components/common/ProGate';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -99,6 +100,7 @@ export default function ExportScreen() {
   ];
 
   return (
+    <ProGate featureName="CSV Export">
     <View style={styles.container}>
       {/* Date Range */}
       <View style={styles.card}>
@@ -149,6 +151,7 @@ export default function ExportScreen() {
         Sessions will be exported using your current unit preferences ({distanceUnit === 'mi' ? 'miles' : 'km'}, {volumeUnit === 'gal' ? 'gallons' : 'liters'}).
       </Text>
     </View>
+    </ProGate>
   );
 }
 

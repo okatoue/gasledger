@@ -18,4 +18,7 @@ export const env = {
 
   // Logo.dev (publishable key, safe for client-side)
   LOGO_DEV_TOKEN: process.env.EXPO_PUBLIC_LOGO_DEV_TOKEN ?? '',
+
+  // RevenueCat
+  REVENUECAT_API_KEY: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '',
 } as const;

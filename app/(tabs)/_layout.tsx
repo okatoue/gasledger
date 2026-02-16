@@ -25,7 +25,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'History',
+          headerShown: false,
           tabBarLabel: 'History',
           tabBarIcon: ({ color, size }) => <Ionicons name="time" size={size} color={color} />,
         }}

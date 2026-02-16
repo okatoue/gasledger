@@ -9,6 +9,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useVehicleStore } from '@/stores/vehicleStore';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
 import { formatDurationLabel, formatDistance, formatCurrency } from '@/utils/formatting';
+import { useSubscription } from '@/hooks/useSubscription';
+import AdBanner from '@/components/common/AdBanner';
+import { adUnits } from '@/config/adUnits';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -17,6 +20,7 @@ export default function SessionHistoryScreen() {
   const router = useRouter();
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
   const session = useAuthStore((s) => s.session);
+  const { isPro } = useSubscription();
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [vehicleMap, setVehicleMap] = useState<Map<string, string>>(new Map());
@@ -108,17 +112,34 @@ export default function SessionHistoryScreen() {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          <View style={styles.statsStrip}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{formatCurrency(monthlySpend)}</Text>
-              <Text style={styles.statLabel}>This Month</Text>
+          <>
+            <View style={styles.statsStrip}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{formatCurrency(monthlySpend)}</Text>
+                <Text style={styles.statLabel}>This Month</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{formatDistance(monthlyDistance, distanceUnit)}</Text>
+                <Text style={styles.statLabel}>Total Distance</Text>
+              </View>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{formatDistance(monthlyDistance, distanceUnit)}</Text>
-              <Text style={styles.statLabel}>Total Distance</Text>
-            </View>
-          </View>
+            <TouchableOpacity
+              style={[styles.spendingButton, !isPro && { marginBottom: spacing.xs }]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/history/spending')}
+            >
+              <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
+              <Text style={styles.spendingButtonText}>Spending Analytics</Text>
+              {!isPro && (
+                <View style={styles.proBadge}>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
+            <AdBanner unitId={adUnits.history} />
+          </>
         }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -175,6 +196,35 @@ const styles = StyleSheet.create({
   statValue: { ...typography.h2, color: colors.text },
   statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
   statDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.sm },
+
+  spendingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  spendingButtonText: {
+    ...typography.label,
+    color: colors.text,
+    flex: 1,
+  },
+  proBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.white,
+    letterSpacing: 0.5,
+  },
 
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyTitle: { ...typography.h3, color: colors.text, marginTop: spacing.md },

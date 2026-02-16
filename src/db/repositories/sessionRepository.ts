@@ -215,6 +215,42 @@ export const sessionRepository = {
     return row ?? { totalSpend: 0, totalDistanceM: 0 };
   },
 
+  async getSpendingByDay(
+    userId: string,
+    days: number,
+  ): Promise<{ date: string; total: number }[]> {
+    const db = await getDatabase();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const rows = await db.getAllAsync<{ date: string; total: number }>(
+      `SELECT DATE(started_at_user) as date, COALESCE(SUM(est_cost), 0) as total
+       FROM sessions
+       WHERE user_id = ? AND status = 'completed' AND started_at_user >= ?
+       GROUP BY DATE(started_at_user)
+       ORDER BY date ASC`,
+      [userId, cutoff.toISOString()],
+    );
+    return rows;
+  },
+
+  async getSpendingByMonth(
+    userId: string,
+    months: number,
+  ): Promise<{ month: string; total: number }[]> {
+    const db = await getDatabase();
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const rows = await db.getAllAsync<{ month: string; total: number }>(
+      `SELECT STRFTIME('%Y-%m', started_at_user) as month, COALESCE(SUM(est_cost), 0) as total
+       FROM sessions
+       WHERE user_id = ? AND status = 'completed' AND started_at_user >= ?
+       GROUP BY STRFTIME('%Y-%m', started_at_user)
+       ORDER BY month ASC`,
+      [userId, cutoff.toISOString()],
+    );
+    return rows;
+  },
+
   async deleteAllByUser(userId: string): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {

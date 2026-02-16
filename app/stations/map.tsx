@@ -21,6 +21,7 @@ import { detectBrand, getBrandLogoUrl } from '@/utils/stationBrands';
 import FuelTypePicker from '@/components/common/FuelTypePicker';
 import { useHomeStation } from '@/hooks/useHomeStation';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscription } from '@/hooks/useSubscription';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -185,6 +186,7 @@ export default function StationsMapScreen() {
   const setPendingSelection = useStationStore((s) => s.setPendingSelection);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
   const session = useAuthStore((s) => s.session);
+  const { isPro } = useSubscription();
   const { homeStation, setHome, removeHome } = useHomeStation(session?.user.id);
 
   const [selectedFuelType, setSelectedFuelType] = useState(params.fuelType ?? 'regular');
@@ -297,12 +299,16 @@ export default function StationsMapScreen() {
 
   const handleToggleHome = useCallback(() => {
     if (!selectedStation) return;
+    if (!isPro) {
+      router.push('/pro');
+      return;
+    }
     if (selectedStation.placeId === homeStation?.place_id) {
       removeHome();
     } else {
       setHome(selectedStation);
     }
-  }, [selectedStation, homeStation?.place_id, setHome, removeHome]);
+  }, [selectedStation, homeStation?.place_id, isPro, setHome, removeHome, router]);
 
   const getDistanceLabel = useCallback(
     (station: GasStation): string => {

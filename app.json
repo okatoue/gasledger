@@ -67,7 +67,14 @@
       "expo-sqlite",
       "expo-localization",
       "expo-apple-authentication",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3459755575720995~8238283637",
+          "iosAppId": "ca-app-pub-3459755575720995~3287442923"
+        }
+      ]
     ],
     "extra": {
       "router": {},

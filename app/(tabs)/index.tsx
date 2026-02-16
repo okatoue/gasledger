@@ -11,6 +11,7 @@ import {
   Alert,
   Animated,
   Pressable,
+  AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +34,9 @@ import FuelTypePicker from '@/components/common/FuelTypePicker';
 import RollingPrice from '@/components/common/RollingPrice';
 import { useStationStore } from '@/stores/stationStore';
 import { useLocationPermission } from '@/hooks/useLocationPermission';
+import { useSubscription } from '@/hooks/useSubscription';
+import AdBanner from '@/components/common/AdBanner';
+import { adUnits } from '@/config/adUnits';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -64,6 +68,7 @@ function ParkedDashboard({
   stationsLoading,
   stationsError,
   homeStationPlaceId,
+  isPro,
   onSelectStationPrice,
   onToggleHome,
 }: {
@@ -82,6 +87,7 @@ function ParkedDashboard({
   stationsLoading: boolean;
   stationsError: string | null;
   homeStationPlaceId: string | null;
+  isPro: boolean;
   onSelectStationPrice: (price: number) => void;
   onToggleHome: (station: import('@/services/places/placesService').GasStation) => void;
 }) {
@@ -110,7 +116,7 @@ function ParkedDashboard({
   return (
     <View style={styles.parkedContainer}>
       {/* A. Active Vehicle Card */}
-      <TouchableOpacity style={styles.vehicleCard} activeOpacity={0.7} onPress={onSelectVehicle}>
+      <TouchableOpacity style={[styles.vehicleCard, isPro && { marginBottom: spacing.lg }]} activeOpacity={0.7} onPress={onSelectVehicle}>
         <View style={styles.vehicleInfo}>
           <Ionicons name="car-sport" size={28} color={colors.primary} />
           <View style={styles.vehicleText}>
@@ -123,8 +129,10 @@ function ParkedDashboard({
         <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
+      <AdBanner unitId={adUnits.dashboardTop} style={{ marginTop: 0 }} />
+
       {/* Fuel / Price / Stations Card */}
-      <View style={styles.fuelPriceCard}>
+      <View style={[styles.fuelPriceCard, !isPro && { marginBottom: spacing.sm }]}>
         {/* Fuel Grade Picker */}
         <FuelTypePicker selected={selectedFuelType} onSelect={onChangeFuelType} />
 
@@ -190,11 +198,14 @@ function ParkedDashboard({
           selectedFuelType={selectedFuelType}
           distanceUnit={distanceUnit}
           homeStationPlaceId={homeStationPlaceId}
+          isPro={isPro}
           onSelectPrice={onSelectStationPrice}
           onToggleHome={onToggleHome}
           embedded
         />
       </View>
+
+      <AdBanner unitId={adUnits.dashboardBottom} style={{ marginTop: 0 }} />
 
       {/* C. Big Start Button */}
       <View style={styles.startButtonContainer}>
@@ -406,6 +417,7 @@ export default function DashboardScreen() {
   const locationMode = useSettingsStore((s) => s.locationMode);
   const setLocationMode = useSettingsStore((s) => s.setLocationMode);
   const { requestBackground } = useLocationPermission();
+  const { isPro } = useSubscription();
 
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [locationModeModalVisible, setLocationModeModalVisible] = useState(false);
@@ -429,6 +441,17 @@ export default function DashboardScreen() {
   // Auto-fetch nearby stations on mount
   useEffect(() => {
     nearbyStations.refresh();
+  }, []);
+
+  // Re-fetch nearby stations when app returns to foreground
+  // (e.g. after user grants location permission in system Settings)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        nearbyStations.refresh();
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   const homeStationPrice = homeStation.getPriceForType(selectedFuelType);
@@ -598,6 +621,7 @@ export default function DashboardScreen() {
           stationsLoading={nearbyStations.isLoading}
           stationsError={nearbyStations.error}
           homeStationPlaceId={homeStation.homeStation?.place_id ?? null}
+          isPro={isPro}
           onSelectStationPrice={handleChangePrice}
           onToggleHome={(station) => {
             if (station.placeId === homeStation.homeStation?.place_id) {
@@ -644,12 +668,13 @@ const styles = StyleSheet.create({
   // ── Vehicle Card ──
   vehicleCard: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -657,9 +682,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   vehicleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  vehicleText: { marginLeft: 12, flex: 1 },
-  vehicleLabel: { ...typography.caption, color: colors.textTertiary },
-  vehicleName: { ...typography.h3, color: colors.text },
+  vehicleText: { marginLeft: 10, flex: 1 },
+  vehicleLabel: { ...typography.caption, color: colors.textTertiary, fontSize: 11 },
+  vehicleName: { ...typography.label, color: colors.text },
 
   // ── Fuel / Price / Stations Card ──
   fuelPriceCard: {

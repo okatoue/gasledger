@@ -24,6 +24,7 @@ const StationCard = React.memo(function StationCard({
   selectedFuelType,
   distanceUnit,
   isHome,
+  isPro,
   onSelectPrice,
   onToggleHome,
 }: {
@@ -31,6 +32,7 @@ const StationCard = React.memo(function StationCard({
   selectedFuelType: string;
   distanceUnit: 'mi' | 'km';
   isHome: boolean;
+  isPro: boolean;
   onSelectPrice: (price: number) => void;
   onToggleHome: () => void;
 }) {
@@ -43,12 +45,22 @@ const StationCard = React.memo(function StationCard({
   const logoUrl = getBrandLogoUrl(brand);
   const [logoError, setLogoError] = useState(false);
 
+  const router = useRouter();
+
   const handlePress = useCallback(() => {
     if (priceMatch) onSelectPrice(priceMatch.priceValue);
   }, [priceMatch, onSelectPrice]);
 
+  const handleLongPress = useCallback(() => {
+    if (!isPro) {
+      router.push('/pro');
+      return;
+    }
+    onToggleHome();
+  }, [isPro, onToggleHome, router]);
+
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress} onLongPress={onToggleHome}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress} onLongPress={handleLongPress}>
       {/* Circular brand icon */}
       <View style={styles.brandWrapper}>
         <View style={[styles.brandCircle, { backgroundColor: logoUrl && !logoError ? '#FFFFFF' : brand.bgColor }]}>
@@ -93,6 +105,7 @@ interface NearbyStationsBarProps {
   selectedFuelType: string;
   distanceUnit: 'mi' | 'km';
   homeStationPlaceId: string | null;
+  isPro: boolean;
   onSelectPrice: (price: number) => void;
   onToggleHome: (station: GasStation) => void;
   /** When true, strips the card wrapper (background, shadow, margin) for embedding inside a parent card */
@@ -117,6 +130,7 @@ function NearbyStationsBar({
   selectedFuelType,
   distanceUnit,
   homeStationPlaceId,
+  isPro,
   onSelectPrice,
   onToggleHome,
   embedded,
@@ -161,11 +175,12 @@ function NearbyStationsBar({
         selectedFuelType={selectedFuelType}
         distanceUnit={distanceUnit}
         isHome={item.placeId === homeStationPlaceId}
+        isPro={isPro}
         onSelectPrice={onSelectPrice}
         onToggleHome={() => onToggleHome(item)}
       />
     ),
-    [selectedFuelType, distanceUnit, homeStationPlaceId, onSelectPrice, onToggleHome],
+    [selectedFuelType, distanceUnit, homeStationPlaceId, isPro, onSelectPrice, onToggleHome],
   );
 
   return (
@@ -323,6 +338,7 @@ const styles = StyleSheet.create({
   centeredText: {
     ...typography.caption,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   cardList: {
     gap: CARD_GAP,

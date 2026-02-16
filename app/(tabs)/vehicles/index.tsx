@@ -6,6 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useVehicleStore } from '@/stores/vehicleStore';
 import type { Vehicle } from '@/services/vehicle/vehicleService';
+import AdBanner from '@/components/common/AdBanner';
+import { adUnits } from '@/config/adUnits';
+import { BannerAdSize } from 'react-native-google-mobile-ads';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -86,6 +89,7 @@ export default function VehiclesScreen() {
       renderItem={({ item }) => (
         <VehicleCard vehicle={item} onPress={() => router.push(`/vehicles/${item.id}`)} />
       )}
+      ListHeaderComponent={<AdBanner unitId={adUnits.vehicles} size={BannerAdSize.MEDIUM_RECTANGLE} />}
       contentContainerStyle={styles.list}
       style={styles.container}
     />
