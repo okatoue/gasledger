@@ -13,29 +13,14 @@ export default function AdBanner({ unitId, size = BannerAdSize.BANNER, style }: 
   const { isPro } = useSubscription();
   const [failed, setFailed] = useState(false);
 
-  console.log(`[AdBanner] unitId=${unitId} isPro=${isPro} failed=${failed}`);
-
-  if (isPro) {
-    console.log(`[AdBanner] HIDDEN (isPro) unitId=${unitId}`);
-    return null;
-  }
-  if (failed) {
-    console.log(`[AdBanner] HIDDEN (failed) unitId=${unitId}`);
-    return null;
-  }
-
-  console.log(`[AdBanner] RENDERING unitId=${unitId} size=${size}`);
+  if (isPro || failed) return null;
 
   return (
     <View style={[styles.container, style]}>
       <BannerAd
         unitId={unitId}
         size={size}
-        onAdLoaded={() => console.log(`[AdBanner] AD LOADED unitId=${unitId}`)}
-        onAdFailedToLoad={(error) => {
-          console.log(`[AdBanner] AD FAILED unitId=${unitId} error=${error.message} code=${error.code}`);
-          setFailed(true);
-        }}
+        onAdFailedToLoad={() => setFailed(true)}
       />
     </View>
   );
