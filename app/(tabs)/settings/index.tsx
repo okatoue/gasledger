@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '@/theme/useColors';
@@ -12,8 +12,8 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { supabase } from '@/config/supabase';
 import { vehicleService } from '@/services/vehicle/vehicleService';
-import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useIsDark } from '@/theme/useColors';
 
 function NavRow({ label, icon, onPress, colors }: { label: string; icon: string; onPress: () => void; colors: Colors }) {
   return (
@@ -30,7 +30,7 @@ export default function SettingsScreen() {
   const colors = useColors();
   const { isPro } = useSubscription();
   const [isClearing, setIsClearing] = useState(false);
-  const colorScheme = useSettingsStore((s) => s.colorScheme);
+  const isDark = useIsDark();
   const setColorScheme = useSettingsStore((s) => s.setColorScheme);
 
   const handleClearStorage = () => {
@@ -62,7 +62,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
       {/* Pro section */}
       <View style={styles.section}>
         <View style={[styles.navCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -79,17 +79,16 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
         <View style={[styles.navCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={{ padding: spacing.md }}>
-            <SegmentedControl
-              label="Theme"
-              options={[
-                { label: 'System', value: 'system' as const },
-                { label: 'Light', value: 'light' as const },
-                { label: 'Dark', value: 'dark' as const },
-              ]}
-              value={colorScheme}
-              onChange={setColorScheme}
-            />
+          <View style={styles.themeRow}>
+            <Ionicons name={isDark ? 'moon' : 'sunny'} size={20} color={colors.primary} />
+            <Text style={[styles.navRowText, { color: colors.text }]}>Dark Mode</Text>
+            <TouchableOpacity
+              style={[styles.themeToggle, { backgroundColor: isDark ? colors.primary : colors.surfaceSecondary }]}
+              onPress={() => setColorScheme(isDark ? 'light' : 'dark')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.themeToggleKnob, isDark && styles.themeToggleKnobActive]} />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -158,12 +157,13 @@ export default function SettingsScreen() {
           Deletes all local data and signs you out.
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.lg },
+  container: { flex: 1 },
+  contentContainer: { padding: spacing.lg, paddingBottom: 40 },
   section: { marginTop: spacing.lg },
   sectionTitle: { ...typography.h3, marginBottom: spacing.md },
 
@@ -183,6 +183,28 @@ const styles = StyleSheet.create({
     ...typography.body,
     flex: 1,
     marginLeft: spacing.sm + 2,
+  },
+  themeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+  },
+  themeToggle: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  themeToggleKnob: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+  },
+  themeToggleKnobActive: {
+    alignSelf: 'flex-end',
   },
 
   destructiveRow: {

@@ -572,6 +572,27 @@ export default function DashboardScreen() {
     }
   };
 
+  // Auto-update price from home station when nearby stations are fetched
+  useEffect(() => {
+    if (!homeStation.homeStation || nearbyStations.stations.length === 0) return;
+    const match = nearbyStations.stations.find(
+      (s) => s.placeId === homeStation.homeStation?.place_id,
+    );
+    if (!match) return;
+    const price = match.fuelPrices.find((p) => p.fuelType === selectedFuelType);
+    if (price) {
+      setGasPrice(price.priceValue);
+      lastPriceRepository.upsert(
+        selectedFuelType,
+        price.priceValue,
+        volumeUnit === 'gal' ? 'per_gal' : 'per_l',
+        'usd',
+      ).catch(() => {});
+      // Keep home station cached prices fresh
+      homeStation.updateCachedPrices(match.fuelPrices);
+    }
+  }, [nearbyStations.stations, homeStation.homeStation?.place_id, selectedFuelType]);
+
   const handleChangePrice = (price: number) => {
     setGasPrice(price);
     lastPriceRepository.upsert(
@@ -634,6 +655,8 @@ export default function DashboardScreen() {
               homeStation.removeHome();
             } else {
               homeStation.setHome(station);
+              const price = station.fuelPrices.find((p) => p.fuelType === selectedFuelType);
+              if (price) handleChangePrice(price.priceValue);
             }
           }}
         />

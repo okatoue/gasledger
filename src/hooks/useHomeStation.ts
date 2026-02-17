@@ -52,6 +52,13 @@ export function useHomeStation(userId: string | undefined) {
     setHomeStation(updated);
   }, [userId, homeStation]);
 
+  const updateCachedPrices = useCallback(async (prices: StationFuelPrice[]) => {
+    if (!userId || !homeStation) return;
+    await homeStationRepository.updateCachedPrices(userId, prices);
+    const updated = await homeStationRepository.get(userId);
+    setHomeStation(updated);
+  }, [userId, homeStation]);
+
   const getPriceForType = useCallback(
     (fuelType: string): number | null => {
       if (!homeStation?.cached_prices) return null;
@@ -61,5 +68,5 @@ export function useHomeStation(userId: string | undefined) {
     [homeStation],
   );
 
-  return { homeStation, isLoaded, setHome, removeHome, refreshPrice, getPriceForType };
+  return { homeStation, isLoaded, setHome, removeHome, refreshPrice, updateCachedPrices, getPriceForType };
 }
