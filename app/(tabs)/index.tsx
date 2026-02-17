@@ -32,7 +32,6 @@ import LocationModeModal from '@/components/session/LocationModeModal';
 import NearbyStationsBar from '@/components/station/NearbyStationsBar';
 import FuelTypePicker from '@/components/common/FuelTypePicker';
 import RollingPrice from '@/components/common/RollingPrice';
-import { useStationStore } from '@/stores/stationStore';
 import { useLocationPermission } from '@/hooks/useLocationPermission';
 import { useSubscription } from '@/hooks/useSubscription';
 import AdBanner from '@/components/common/AdBanner';
@@ -428,9 +427,6 @@ export default function DashboardScreen() {
   const homeStation = useHomeStation(session?.user.id);
   const nearbyStations = useNearbyStations();
 
-  const pendingSelection = useStationStore((s) => s.pendingSelection);
-  const clearPendingSelection = useStationStore((s) => s.clearPendingSelection);
-
   // Refresh home station prices on mount if stale
   useEffect(() => {
     if (homeStation.isLoaded && homeStation.homeStation) {
@@ -558,32 +554,6 @@ export default function DashboardScreen() {
       'usd',
     ).catch(() => {});
   };
-
-  // Consume pending price selection from map
-  useEffect(() => {
-    if (!pendingSelection) return;
-    const { price, fuelType } = pendingSelection;
-    clearPendingSelection();
-
-    const apply = async () => {
-      // Persist first so useGasPrice finds it when the type changes
-      await lastPriceRepository.upsert(
-        fuelType,
-        price,
-        volumeUnit === 'gal' ? 'per_gal' : 'per_l',
-        'usd',
-      ).catch(() => {});
-
-      if (fuelType !== selectedFuelType) {
-        // Switching type triggers useGasPrice which reads the DB
-        setSelectedFuelType(fuelType);
-      } else {
-        // Same grade — update price directly
-        setGasPrice(price);
-      }
-    };
-    apply();
-  }, [pendingSelection]);
 
   const handleStopDrive = async () => {
     if (!selectedVehicle) return;

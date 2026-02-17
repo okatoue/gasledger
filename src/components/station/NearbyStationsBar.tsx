@@ -135,7 +135,6 @@ function NearbyStationsBar({
   onToggleHome,
   embedded,
 }: NearbyStationsBarProps) {
-  const router = useRouter();
   const [sortMode, setSortMode] = useState<'distance' | 'price'>('distance');
 
   // Brief loading state when the fuel grade changes to avoid layout jitter
@@ -163,10 +162,6 @@ function NearbyStationsBar({
     }
     return filtered;
   }, [stations, selectedFuelType, sortMode]);
-
-  const handleSeeMap = useCallback(() => {
-    router.push({ pathname: '/stations/map', params: { fuelType: selectedFuelType } });
-  }, [router, selectedFuelType]);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<GasStation>) => (
@@ -214,14 +209,6 @@ function NearbyStationsBar({
             </TouchableOpacity>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.seeMapButton}
-          onPress={handleSeeMap}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.seeMapText}>See Map</Text>
-          <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-        </TouchableOpacity>
       </View>
 
       {/* Content */}
@@ -318,16 +305,6 @@ const styles = StyleSheet.create({
   },
   sortPillActive: {
     backgroundColor: colors.primary,
-  },
-  seeMapButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  seeMapText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '600',
   },
   centered: {
     alignItems: 'center',

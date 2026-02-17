@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useVehicleStore } from '@/stores/vehicleStore';
+import { BannerAdSize } from 'react-native-google-mobile-ads';
 import { sessionRepository, Session } from '@/db/repositories/sessionRepository';
 import { formatDurationLabel, formatDistance, formatCurrency } from '@/utils/formatting';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -84,31 +85,50 @@ export default function SessionHistoryScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: Session }) => (
-    <TouchableOpacity
-      style={styles.tripCard}
-      activeOpacity={0.7}
-      onPress={() => router.push(`/history/${item.id}`)}
-    >
-      <View style={styles.tripLeft}>
-        <Text style={styles.tripDate}>{formatSessionDate(item.started_at_user)}</Text>
-        <Text style={styles.tripVehicle}>{vehicleMap.get(item.vehicle_id) ?? 'Unknown Vehicle'}</Text>
-        <Text style={styles.tripDetail}>
-          {formatDistance(item.distance_m, distanceUnit)} &middot; {formatDurationLabel(getSessionDuration(item))}
-        </Text>
-      </View>
-      <View style={styles.tripRight}>
-        <Text style={styles.tripCost}>${(item.est_cost ?? 0).toFixed(2)}</Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-      </View>
-    </TouchableOpacity>
-  );
+  type ListItem = { type: 'session'; data: Session } | { type: 'ad'; key: string };
+
+  const listData = useMemo(() => {
+    const items: ListItem[] = [];
+    for (let i = 0; i < sessions.length; i++) {
+      items.push({ type: 'session', data: sessions[i] });
+      if ((i + 1) % 3 === 0 && i < sessions.length - 1) {
+        items.push({ type: 'ad', key: `ad-${i}` });
+      }
+    }
+    return items;
+  }, [sessions]);
+
+  const renderItem = ({ item }: { item: ListItem }) => {
+    if (item.type === 'ad') {
+      return <AdBanner unitId={adUnits.history} size={BannerAdSize.MEDIUM_RECTANGLE} />;
+    }
+    const s = item.data;
+    return (
+      <TouchableOpacity
+        style={styles.tripCard}
+        activeOpacity={0.7}
+        onPress={() => router.push(`/history/${s.id}`)}
+      >
+        <View style={styles.tripLeft}>
+          <Text style={styles.tripDate}>{formatSessionDate(s.started_at_user)}</Text>
+          <Text style={styles.tripVehicle}>{vehicleMap.get(s.vehicle_id) ?? 'Unknown Vehicle'}</Text>
+          <Text style={styles.tripDetail}>
+            {formatDistance(s.distance_m, distanceUnit)} &middot; {formatDurationLabel(getSessionDuration(s))}
+          </Text>
+        </View>
+        <View style={styles.tripRight}>
+          <Text style={styles.tripCost}>${(s.est_cost ?? 0).toFixed(2)}</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={sessions}
-        keyExtractor={(item) => item.id}
+        data={listData}
+        keyExtractor={(item) => (item.type === 'ad' ? item.key : item.data.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={

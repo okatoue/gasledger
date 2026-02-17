@@ -148,7 +148,6 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="session" />
-          <Stack.Screen name="stations" />
           <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
         </Stack>
       </AuthGate>
