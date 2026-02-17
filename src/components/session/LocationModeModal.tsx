@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
@@ -26,6 +26,7 @@ export default function LocationModeModal({
   onClose,
   requestBackgroundPermission,
 }: LocationModeModalProps) {
+  const colors = useColors();
   const [selected, setSelected] = useState<'full' | 'limited'>('full');
   const [loading, setLoading] = useState(false);
 
@@ -49,29 +50,33 @@ export default function LocationModeModal({
   return (
     <Modal visible={visible} transparent animationType="slide">
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
-          <Text style={styles.title}>Location Tracking Mode</Text>
-          <Text style={styles.subtitle}>Choose how GasLedger tracks your drives</Text>
+        <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]} onPress={() => {}}>
+          <Text style={[styles.title, { color: colors.text }]}>Location Tracking Mode</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Choose how GasLedger tracks your drives</Text>
 
           <TouchableOpacity
-            style={[styles.optionCard, selected === 'full' && styles.optionCardSelected]}
+            style={[
+              styles.optionCard,
+              { borderColor: colors.border },
+              selected === 'full' && { borderColor: colors.primary, backgroundColor: colors.primaryBg },
+            ]}
             onPress={() => setSelected('full')}
             activeOpacity={0.7}
           >
             <View style={styles.optionHeader}>
-              <View style={styles.radio}>
-                {selected === 'full' && <View style={styles.radioFill} />}
+              <View style={[styles.radio, { borderColor: colors.primary }]}>
+                {selected === 'full' && <View style={[styles.radioFill, { backgroundColor: colors.primary }]} />}
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.optionTitleRow}>
-                  <Text style={[styles.optionTitle, selected === 'full' && styles.optionTitleSelected]}>
+                  <Text style={[styles.optionTitle, { color: colors.text }, selected === 'full' && { color: colors.primary }]}>
                     Full Tracking
                   </Text>
-                  <View style={styles.recommendedBadge}>
+                  <View style={[styles.recommendedBadge, { backgroundColor: colors.primaryLight }]}>
                     <Text style={styles.recommendedText}>Recommended</Text>
                   </View>
                 </View>
-                <Text style={styles.optionDesc}>
+                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
                   Tracks your drive reliably in the background, even when the screen is off
                 </Text>
               </View>
@@ -79,19 +84,23 @@ export default function LocationModeModal({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.optionCard, selected === 'limited' && styles.optionCardSelected]}
+            style={[
+              styles.optionCard,
+              { borderColor: colors.border },
+              selected === 'limited' && { borderColor: colors.primary, backgroundColor: colors.primaryBg },
+            ]}
             onPress={() => setSelected('limited')}
             activeOpacity={0.7}
           >
             <View style={styles.optionHeader}>
-              <View style={styles.radio}>
-                {selected === 'limited' && <View style={styles.radioFill} />}
+              <View style={[styles.radio, { borderColor: colors.primary }]}>
+                {selected === 'limited' && <View style={[styles.radioFill, { backgroundColor: colors.primary }]} />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.optionTitle, selected === 'limited' && styles.optionTitleSelected]}>
+                <Text style={[styles.optionTitle, { color: colors.text }, selected === 'limited' && { color: colors.primary }]}>
                   Limited Mode
                 </Text>
-                <Text style={styles.optionDesc}>
+                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
                   May pause tracking when the app goes to the background
                 </Text>
               </View>
@@ -99,7 +108,7 @@ export default function LocationModeModal({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.continueButton, loading && styles.disabledButton]}
+            style={[styles.continueButton, { backgroundColor: colors.primary }, loading && styles.disabledButton]}
             onPress={handleContinue}
             disabled={loading}
             activeOpacity={0.8}
@@ -121,25 +130,19 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: spacing.lg,
     paddingBottom: 40,
   },
-  title: { ...typography.h2, color: colors.text, marginBottom: 4 },
-  subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.lg },
+  title: { ...typography.h2, marginBottom: 4 },
+  subtitle: { ...typography.bodySmall, marginBottom: spacing.lg },
 
   optionCard: {
     padding: spacing.md,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: spacing.sm,
-  },
-  optionCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: '#EFF6FF',
   },
   optionHeader: {
     flexDirection: 'row',
@@ -150,16 +153,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  optionTitle: { ...typography.label, color: colors.text },
-  optionTitleSelected: { color: colors.primary },
-  optionDesc: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
+  optionTitle: { ...typography.label },
+  optionDesc: { ...typography.caption, marginTop: 4 },
 
   radio: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -169,24 +170,21 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.primary,
   },
 
   recommendedBadge: {
-    backgroundColor: colors.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  recommendedText: { fontSize: 11, fontWeight: '600', color: colors.white },
+  recommendedText: { fontSize: 11, fontWeight: '600', color: '#FFFFFF' },
 
   continueButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     marginTop: spacing.md,
   },
   disabledButton: { opacity: 0.6 },
-  continueButtonText: { color: colors.white, fontSize: 18, fontWeight: '600' },
+  continueButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
 });

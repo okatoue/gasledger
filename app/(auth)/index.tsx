@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, FadeOut, Layout } from 'react-native-reanimated';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import TextInput from '@/components/common/TextInput';
@@ -24,6 +24,7 @@ type Phase = 'email' | 'password';
 type Mode = 'signin' | 'signup';
 
 export default function AuthScreen() {
+  const colors = useColors();
   const [phase, setPhase] = useState<Phase>('email');
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -111,7 +112,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -122,14 +123,14 @@ export default function AuthScreen() {
         >
           {/* Brand Header */}
           <Animated.View layout={animateLayout ? Layout.duration(300) : undefined} style={styles.header}>
-            <Text style={styles.logo}>GasLedger</Text>
-            <Text style={styles.tagline}>Track every mile, every dollar.</Text>
+            <Text style={[styles.logo, { color: colors.primary }]}>GasLedger</Text>
+            <Text style={[styles.tagline, { color: colors.textSecondary }]}>Track every mile, every dollar.</Text>
           </Animated.View>
 
           {/* Error Banner */}
           {error && (
             <Animated.View entering={FadeIn.duration(200)} layout={animateLayout ? Layout.duration(300) : undefined} style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{error}</Text>
+              <Text style={[styles.errorBannerText, { color: colors.error }]}>{error}</Text>
             </Animated.View>
           )}
 
@@ -153,14 +154,14 @@ export default function AuthScreen() {
             <>
               <Animated.View entering={FadeIn.duration(250).delay(100)} exiting={FadeOut.duration(250)}>
                 <Pressable
-                  style={[styles.primaryButton, (!email || isLoading) && styles.buttonDisabled]}
+                  style={[styles.primaryButton, { backgroundColor: colors.primary }, (!email || isLoading) && styles.buttonDisabled]}
                   onPress={handleContinue}
                   disabled={!email || isLoading}
                 >
                   {isLoading ? (
                     <ActivityIndicator color={colors.white} />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Continue</Text>
+                    <Text style={[styles.primaryButtonText, { color: colors.white }]}>Continue</Text>
                   )}
                 </Pressable>
               </Animated.View>
@@ -182,7 +183,7 @@ export default function AuthScreen() {
           {phase === 'password' && (
             <Animated.View entering={FadeInDown.duration(300).delay(100)} exiting={FadeOut.duration(250)}>
               <Pressable onPress={handleBack} style={styles.changeEmailButton}>
-                <Text style={styles.changeEmail}>Change email</Text>
+                <Text style={[styles.changeEmail, { color: colors.primary }]}>Change email</Text>
               </Pressable>
 
               <TextInput
@@ -213,14 +214,14 @@ export default function AuthScreen() {
               )}
 
               <Pressable
-                style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+                style={[styles.primaryButton, { backgroundColor: colors.primary }, isLoading && styles.buttonDisabled]}
                 onPress={handleSubmit}
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <ActivityIndicator color={colors.white} />
                 ) : (
-                  <Text style={styles.primaryButtonText}>
+                  <Text style={[styles.primaryButtonText, { color: colors.white }]}>
                     {mode === 'signin' ? 'Sign In' : 'Create Account'}
                   </Text>
                 )}
@@ -237,7 +238,6 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   flex: {
     flex: 1,
@@ -254,12 +254,10 @@ const styles = StyleSheet.create({
   },
   logo: {
     ...typography.h1,
-    color: colors.primary,
     marginBottom: spacing.xs,
   },
   tagline: {
     ...typography.body,
-    color: colors.textSecondary,
   },
   errorBanner: {
     backgroundColor: '#FEF2F2',
@@ -271,10 +269,8 @@ const styles = StyleSheet.create({
   },
   errorBannerText: {
     ...typography.bodySmall,
-    color: colors.error,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.sm + 4,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -282,7 +278,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...typography.button,
-    color: colors.white,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -293,6 +288,5 @@ const styles = StyleSheet.create({
   },
   changeEmail: {
     ...typography.bodySmall,
-    color: colors.primary,
   },
 });

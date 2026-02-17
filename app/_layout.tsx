@@ -15,9 +15,24 @@ import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { trackingService } from '@/services/tracking/trackingService';
 import { syncService } from '@/services/sync/syncService';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
+import { useIsDark } from '@/theme/useColors';
 
 const queryClient = new QueryClient();
+
+function ThemedStatusBar() {
+  const isDark = useIsDark();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
+function LoadingScreen() {
+  const colors = useColors();
+  return (
+    <View style={[styles.loading, { backgroundColor: colors.background }]}>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>
+  );
+}
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const session = useAuthStore((s) => s.session);
@@ -54,11 +69,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [session, isLoading, needsOnboarding, segments]);
 
   if (isLoading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return <>{children}</>;
@@ -133,16 +144,12 @@ export default function RootLayout() {
   }, [dbReady]);
 
   if (!dbReady) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StatusBar style="auto" />
+      <ThemedStatusBar />
       <AuthGate>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
@@ -156,5 +163,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

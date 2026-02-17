@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { useSubscription } from '@/hooks/useSubscription';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
@@ -28,6 +28,7 @@ const BENEFITS = [
 ];
 
 export default function ProScreen() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isPro } = useSubscription();
@@ -85,7 +86,7 @@ export default function ProScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Close button */}
       <TouchableOpacity
         style={styles.closeButton}
@@ -98,23 +99,23 @@ export default function ProScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.diamondCircle}>
+          <View style={[styles.diamondCircle, { backgroundColor: colors.primaryBg }]}>
             <Ionicons name="diamond" size={36} color={colors.primary} />
           </View>
-          <Text style={styles.headerTitle}>GasLedger Pro</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>GasLedger Pro</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
             {isPro ? 'You have an active Pro subscription' : 'Unlock all features'}
           </Text>
         </View>
 
         {/* Benefits */}
-        <View style={styles.benefitsList}>
+        <View style={[styles.benefitsList, { backgroundColor: colors.surface }]}>
           {BENEFITS.map((b) => (
             <View key={b.label} style={styles.benefitRow}>
-              <View style={styles.benefitIcon}>
+              <View style={[styles.benefitIcon, { backgroundColor: colors.primaryBg }]}>
                 <Ionicons name={b.icon} size={20} color={colors.primary} />
               </View>
-              <Text style={styles.benefitLabel}>{b.label}</Text>
+              <Text style={[styles.benefitLabel, { color: colors.text }]}>{b.label}</Text>
               <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             </View>
           ))}
@@ -126,7 +127,7 @@ export default function ProScreen() {
             {packages.length === 0 ? (
               <View style={styles.loadingPackages}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.loadingText}>Loading plans...</Text>
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading plans...</Text>
               </View>
             ) : (
               <View style={styles.packagesContainer}>
@@ -136,19 +137,23 @@ export default function ProScreen() {
                   return (
                     <TouchableOpacity
                       key={pkg.identifier}
-                      style={[styles.packageCard, isSelected && styles.packageCardSelected]}
+                      style={[
+                        styles.packageCard,
+                        { backgroundColor: colors.surface, borderColor: colors.border },
+                        isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryBg },
+                      ]}
                       activeOpacity={0.7}
                       onPress={() => setSelectedPkg(pkg)}
                     >
                       {isAnnual && (
-                        <View style={styles.saveBadge}>
+                        <View style={[styles.saveBadge, { backgroundColor: colors.success }]}>
                           <Text style={styles.saveBadgeText}>SAVE</Text>
                         </View>
                       )}
-                      <Text style={[styles.packageTitle, isSelected && styles.packageTitleSelected]}>
+                      <Text style={[styles.packageTitle, { color: colors.text }, isSelected && { color: colors.primary, fontWeight: '700' }]}>
                         {isAnnual ? 'Yearly' : 'Monthly'}
                       </Text>
-                      <Text style={styles.packagePrice}>
+                      <Text style={[styles.packagePrice, { color: colors.textSecondary }]}>
                         {pkg.product.priceString}/{isAnnual ? 'year' : 'month'}
                       </Text>
                     </TouchableOpacity>
@@ -159,13 +164,13 @@ export default function ProScreen() {
 
             {/* Purchase button */}
             <TouchableOpacity
-              style={[styles.purchaseButton, (purchasing || !selectedPkg) && styles.purchaseButtonDisabled]}
+              style={[styles.purchaseButton, { backgroundColor: colors.primary }, (purchasing || !selectedPkg) && styles.purchaseButtonDisabled]}
               onPress={handlePurchase}
               disabled={purchasing || !selectedPkg}
               activeOpacity={0.8}
             >
               {purchasing ? (
-                <ActivityIndicator size="small" color={colors.white} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.purchaseButtonText}>Subscribe</Text>
               )}
@@ -177,7 +182,7 @@ export default function ProScreen() {
               onPress={handleRestore}
               disabled={restoring}
             >
-              <Text style={styles.restoreText}>
+              <Text style={[styles.restoreText, { color: colors.primary }]}>
                 {restoring ? 'Restoring...' : 'Restore Purchases'}
               </Text>
             </TouchableOpacity>
@@ -191,7 +196,6 @@ export default function ProScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   closeButton: {
     position: 'absolute',
@@ -213,22 +217,18 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
   headerTitle: {
     ...typography.h1,
-    color: colors.text,
   },
   headerSubtitle: {
     ...typography.body,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
   },
   benefitsList: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -243,14 +243,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm + 2,
   },
   benefitLabel: {
     ...typography.body,
-    color: colors.text,
     flex: 1,
   },
   loadingPackages: {
@@ -260,7 +258,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     ...typography.caption,
-    color: colors.textSecondary,
   },
   packagesContainer: {
     flexDirection: 'row',
@@ -271,45 +268,31 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.sm,
     borderWidth: 2,
-    borderColor: colors.border,
-  },
-  packageCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: '#EFF6FF',
   },
   packageTitle: {
     ...typography.label,
-    color: colors.text,
     fontSize: 16,
-  },
-  packageTitleSelected: {
-    color: colors.primary,
-    fontWeight: '700',
   },
   packagePrice: {
     ...typography.caption,
-    color: colors.textSecondary,
     marginTop: 4,
   },
   saveBadge: {
-    backgroundColor: colors.success,
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
   saveBadgeText: {
     ...typography.caption,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 10,
   },
   purchaseButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -320,7 +303,7 @@ const styles = StyleSheet.create({
   },
   purchaseButtonText: {
     ...typography.button,
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 18,
   },
   restoreButton: {
@@ -329,6 +312,5 @@ const styles = StyleSheet.create({
   },
   restoreText: {
     ...typography.bodySmall,
-    color: colors.primary,
   },
 });

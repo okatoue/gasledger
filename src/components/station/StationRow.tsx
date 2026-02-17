@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GasStation } from '@/services/places/placesService';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
 import { detectBrand, getBrandLogoUrl } from '@/utils/stationBrands';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
@@ -27,6 +27,7 @@ export default function StationRow({
   onSelect,
   onToggleHome,
 }: StationRowProps) {
+  const colors = useColors();
   const priceMatch = station.fuelPrices.find((p) => p.fuelType === selectedFuelType);
   const distance =
     distanceUnit === 'mi'
@@ -37,7 +38,7 @@ export default function StationRow({
   const [logoError, setLogoError] = useState(false);
 
   return (
-    <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onSelect}>
+    <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} activeOpacity={0.7} onPress={onSelect}>
       <View style={[styles.brandCircle, { backgroundColor: logoUrl && !logoError ? '#FFFFFF' : brand.bgColor }]}>
         {logoUrl && !logoError ? (
           <Image
@@ -52,15 +53,15 @@ export default function StationRow({
         )}
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{station.name}</Text>
-        <Text style={styles.address} numberOfLines={1}>{station.address}</Text>
-        <Text style={styles.distance}>{distance} {distanceUnit}</Text>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{station.name}</Text>
+        <Text style={[styles.address, { color: colors.textSecondary }]} numberOfLines={1}>{station.address}</Text>
+        <Text style={[styles.distance, { color: colors.textTertiary }]}>{distance} {distanceUnit}</Text>
       </View>
       <View style={styles.right}>
         {priceMatch ? (
-          <Text style={styles.price}>${priceMatch.priceValue.toFixed(3)}</Text>
+          <Text style={[styles.price, { color: colors.success }]}>${priceMatch.priceValue.toFixed(3)}</Text>
         ) : (
-          <Text style={styles.priceNA}>N/A</Text>
+          <Text style={[styles.priceNA, { color: colors.textTertiary }]}>N/A</Text>
         )}
         <TouchableOpacity onPress={onToggleHome} hitSlop={8} style={styles.starButton}>
           <Ionicons
@@ -81,7 +82,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 4,
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   brandCircle: {
     width: CIRCLE_SIZE,
@@ -102,11 +102,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   info: { flex: 1, marginRight: spacing.sm },
-  name: { ...typography.label, color: colors.text },
-  address: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  distance: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  name: { ...typography.label },
+  address: { ...typography.caption, marginTop: 2 },
+  distance: { ...typography.caption, marginTop: 2 },
   right: { alignItems: 'flex-end', gap: 4 },
-  price: { ...typography.h3, color: colors.success },
-  priceNA: { ...typography.label, color: colors.textTertiary },
+  price: { ...typography.h3 },
+  priceNA: { ...typography.label },
   starButton: { padding: 4 },
 });

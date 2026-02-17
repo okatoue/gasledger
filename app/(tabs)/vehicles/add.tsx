@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { vehicleService } from '@/services/vehicle/vehicleService';
@@ -28,6 +28,7 @@ import DropdownPicker from '@/components/common/Select';
 type Tab = 'scan' | 'manual';
 
 export default function AddVehicleScreen() {
+  const colors = useColors();
   const router = useRouter();
   const { isPro } = useSubscription();
   const vehicleCount = useVehicleStore((s) => s.vehicles.length);
@@ -132,9 +133,9 @@ export default function AddVehicleScreen() {
 
   if (!isPro && vehicleCount >= 1) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.scrollContent}>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={{ alignItems: 'center', padding: spacing.lg }}>
               <Ionicons name="car-sport" size={48} color={colors.textTertiary} />
               <Text style={{ ...typography.h3, color: colors.text, marginTop: spacing.md, textAlign: 'center' }}>
@@ -144,12 +145,12 @@ export default function AddVehicleScreen() {
                 Free accounts are limited to 1 vehicle. Upgrade to Pro for unlimited vehicles.
               </Text>
               <TouchableOpacity
-                style={[styles.primaryButton, { marginTop: spacing.lg, flexDirection: 'row', gap: 8 }]}
+                style={[styles.primaryButton, { backgroundColor: colors.primary, marginTop: spacing.lg, flexDirection: 'row', gap: 8 }]}
                 activeOpacity={0.8}
                 onPress={() => router.push('/pro')}
               >
                 <Ionicons name="diamond-outline" size={18} color={colors.white} />
-                <Text style={styles.primaryButtonText}>Upgrade to Pro</Text>
+                <Text style={[styles.primaryButtonText, { color: colors.white }]}>Upgrade to Pro</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -161,23 +162,23 @@ export default function AddVehicleScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Option 1: VIN */}
-        <View style={[styles.card, activeTab === 'scan' && styles.activeCard]}>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, activeTab === 'scan' && { borderColor: colors.primary, borderWidth: 2 }]}>
           <TouchableOpacity style={styles.cardHeader} onPress={() => setActiveTab('scan')}>
-            <View style={styles.radioCircle}>
-              {activeTab === 'scan' && <View style={styles.selectedRb} />}
+            <View style={[styles.radioCircle, { borderColor: colors.primary }]}>
+              {activeTab === 'scan' && <View style={[styles.selectedRb, { backgroundColor: colors.primary }]} />}
             </View>
-            <Text style={styles.cardTitle}>Use VIN Number</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Use VIN Number</Text>
           </TouchableOpacity>
 
           {activeTab === 'scan' && (
             <View style={styles.cardBody}>
-              <Text style={styles.label}>Vehicle Identification Number (VIN)</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Vehicle Identification Number (VIN)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text }]}
                 placeholder="e.g. 1HGCM..."
                 placeholderTextColor={colors.textTertiary}
                 value={vin}
@@ -186,12 +187,12 @@ export default function AddVehicleScreen() {
                 autoCorrect={false}
                 autoCapitalize="characters"
               />
-              <Text style={styles.helperText}>{vin.length}/17 characters</Text>
+              <Text style={[styles.helperText, { color: colors.textSecondary }]}>{vin.length}/17 characters</Text>
 
               {isDecoding && (
                 <View style={styles.decodeStatus}>
                   <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.decodeStatusText}>Decoding VIN...</Text>
+                  <Text style={[styles.decodeStatusText, { color: colors.textSecondary }]}>Decoding VIN...</Text>
                 </View>
               )}
 
@@ -203,13 +204,13 @@ export default function AddVehicleScreen() {
               )}
 
               {vinResult && (
-                <View style={styles.vinResultCard}>
+                <View style={[styles.vinResultCard, { backgroundColor: colors.surfaceSecondary }]}>
                   <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                   <View style={{ marginLeft: 10, flex: 1 }}>
-                    <Text style={styles.vinResultTitle}>
+                    <Text style={[styles.vinResultTitle, { color: colors.text }]}>
                       {vinResult.year} {vinResult.make} {vinResult.model}
                     </Text>
-                    <Text style={styles.vinResultSub}>Fuel: {vinResult.fuelType}</Text>
+                    <Text style={[styles.vinResultSub, { color: colors.textSecondary }]}>Fuel: {vinResult.fuelType}</Text>
                   </View>
                 </View>
               )}
@@ -218,19 +219,19 @@ export default function AddVehicleScreen() {
         </View>
 
         {/* Option 2: Manual */}
-        <View style={[styles.card, activeTab === 'manual' && styles.activeCard]}>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, activeTab === 'manual' && { borderColor: colors.primary, borderWidth: 2 }]}>
           <TouchableOpacity style={styles.cardHeader} onPress={() => setActiveTab('manual')}>
-            <View style={styles.radioCircle}>
-              {activeTab === 'manual' && <View style={styles.selectedRb} />}
+            <View style={[styles.radioCircle, { borderColor: colors.primary }]}>
+              {activeTab === 'manual' && <View style={[styles.selectedRb, { backgroundColor: colors.primary }]} />}
             </View>
-            <Text style={styles.cardTitle}>Enter Make & Model</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Enter Make & Model</Text>
           </TouchableOpacity>
 
           {activeTab === 'manual' && (
             <View style={styles.cardBody}>
-              <Text style={styles.label}>Year</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Year</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text }]}
                 placeholder="2024"
                 placeholderTextColor={colors.textTertiary}
                 keyboardType="numeric"
@@ -275,7 +276,7 @@ export default function AddVehicleScreen() {
               {fuelLookup.detailLoading && (
                 <View style={styles.decodeStatus}>
                   <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.decodeStatusText}>Loading vehicle data...</Text>
+                  <Text style={[styles.decodeStatusText, { color: colors.textSecondary }]}>Loading vehicle data...</Text>
                 </View>
               )}
 
@@ -289,14 +290,14 @@ export default function AddVehicleScreen() {
               )}
 
               {fuelLookup.vehicleDetails && (
-                <View style={styles.vinResultCard}>
+                <View style={[styles.vinResultCard, { backgroundColor: colors.surfaceSecondary }]}>
                   <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                   <View style={{ marginLeft: 10, flex: 1 }}>
-                    <Text style={styles.vinResultTitle}>
+                    <Text style={[styles.vinResultTitle, { color: colors.text }]}>
                       {fuelLookup.vehicleDetails.year} {fuelLookup.vehicleDetails.make}{' '}
                       {fuelLookup.vehicleDetails.model}
                     </Text>
-                    <Text style={styles.vinResultSub}>
+                    <Text style={[styles.vinResultSub, { color: colors.textSecondary }]}>
                       Combined: {fuelLookup.vehicleDetails.comb08} MPG {'  '}
                       Fuel: {normalizeFuelInfo(fuelLookup.vehicleDetails.fuelType1).fuelType}
                     </Text>
@@ -309,13 +310,13 @@ export default function AddVehicleScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.primaryButton, (!isFormValid || isSaving) && styles.disabledButton]}
+          style={[styles.primaryButton, { backgroundColor: colors.primary }, (!isFormValid || isSaving) && { backgroundColor: colors.primaryLight }]}
           disabled={!isFormValid || isSaving}
           onPress={handleSave}
         >
-          <Text style={styles.primaryButtonText}>{isSaving ? 'Saving...' : 'Save Vehicle'}</Text>
+          <Text style={[styles.primaryButtonText, { color: colors.white }]}>{isSaving ? 'Saving...' : 'Save Vehicle'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -323,20 +324,17 @@ export default function AddVehicleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   scrollContent: { padding: spacing.lg, paddingBottom: 100 },
 
   card: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  activeCard: { borderColor: colors.primary, borderWidth: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  cardTitle: { ...typography.h3, marginLeft: 12, color: colors.text },
+  cardTitle: { ...typography.h3, marginLeft: 12 },
   cardBody: { marginTop: spacing.md, paddingLeft: 34 },
 
   radioCircle: {
@@ -344,7 +342,6 @@ const styles = StyleSheet.create({
     width: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -352,47 +349,38 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.primary,
   },
 
-  label: { ...typography.label, color: '#374151', marginBottom: spacing.xs + 2 },
+  label: { ...typography.label, marginBottom: spacing.xs + 2 },
   input: {
-    backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm + 2,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: 12,
-    color: colors.text,
   },
-  helperText: { ...typography.caption, color: colors.textSecondary, textAlign: 'right', marginTop: -8 },
+  helperText: { ...typography.caption, textAlign: 'right', marginTop: -8 },
 
   decodeStatus: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
-  decodeStatusText: { ...typography.caption, color: colors.textSecondary, marginLeft: spacing.sm, flex: 1 },
+  decodeStatusText: { ...typography.caption, marginLeft: spacing.sm, flex: 1 },
   vinResultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceSecondary,
     padding: spacing.md,
     borderRadius: borderRadius.md,
     marginTop: spacing.md,
   },
-  vinResultTitle: { ...typography.body, fontWeight: '600', color: colors.text },
-  vinResultSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  vinResultTitle: { ...typography.body, fontWeight: '600' },
+  vinResultSub: { ...typography.caption, marginTop: 2 },
 
   footer: {
     padding: spacing.lg,
-    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: 12,
     alignItems: 'center',
   },
-  disabledButton: { backgroundColor: colors.primaryLight },
-  primaryButtonText: { color: colors.white, fontSize: 18, fontWeight: '600' },
+  primaryButtonText: { fontSize: 18, fontWeight: '600' },
 });

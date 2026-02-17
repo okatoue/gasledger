@@ -17,13 +17,14 @@ import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
 import { exportSessionsCsv } from '@/services/export/csvExporter';
 import DropdownPicker from '@/components/common/Select';
 import ProGate from '@/components/common/ProGate';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
 type DateRange = 'all' | '7' | '30' | '90';
 
 export default function ExportScreen() {
+  const colors = useColors();
   const authSession = useAuthStore((s) => s.session);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
   const volumeUnit = useSettingsStore((s) => s.volumeUnit);
@@ -101,18 +102,28 @@ export default function ExportScreen() {
 
   return (
     <ProGate featureName="CSV Export">
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Date Range */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Date Range</Text>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Date Range</Text>
         <View style={styles.chipRow}>
           {dateRangeOptions.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={[styles.chip, dateRange === opt.value && styles.chipActive]}
+              style={[
+                styles.chip,
+                { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+                dateRange === opt.value && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
               onPress={() => setDateRange(opt.value)}
             >
-              <Text style={[styles.chipText, dateRange === opt.value && styles.chipTextActive]}>
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: colors.textSecondary },
+                  dateRange === opt.value && styles.chipTextActive,
+                ]}
+              >
                 {opt.label}
               </Text>
             </TouchableOpacity>
@@ -121,7 +132,7 @@ export default function ExportScreen() {
       </View>
 
       {/* Vehicle Filter */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <DropdownPicker
           label="Vehicle"
           placeholder="All Vehicles"
@@ -133,21 +144,21 @@ export default function ExportScreen() {
 
       {/* Export Button */}
       <TouchableOpacity
-        style={[styles.exportButton, exporting && styles.disabledButton]}
+        style={[styles.exportButton, { backgroundColor: colors.primary }, exporting && styles.disabledButton]}
         onPress={handleExport}
         disabled={exporting}
       >
         {exporting ? (
-          <ActivityIndicator size="small" color={colors.white} />
+          <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Ionicons name="download-outline" size={20} color={colors.white} />
+          <Ionicons name="download-outline" size={20} color="#FFFFFF" />
         )}
         <Text style={styles.exportButtonText}>
           {exporting ? 'Exporting...' : 'Export CSV'}
         </Text>
       </TouchableOpacity>
 
-      <Text style={styles.infoText}>
+      <Text style={[styles.infoText, { color: colors.textTertiary }]}>
         Sessions will be exported using your current unit preferences ({distanceUnit === 'mi' ? 'miles' : 'km'}, {volumeUnit === 'gal' ? 'gallons' : 'liters'}).
       </Text>
     </View>
@@ -156,18 +167,16 @@ export default function ExportScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg },
+  container: { flex: 1, padding: spacing.lg },
 
   card: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
 
-  sectionTitle: { ...typography.label, color: colors.text, marginBottom: spacing.sm },
+  sectionTitle: { ...typography.label, marginBottom: spacing.sm },
 
   chipRow: {
     flexDirection: 'row',
@@ -178,19 +187,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: { ...typography.bodySmall, color: colors.textSecondary },
-  chipTextActive: { color: colors.white, fontWeight: '600' },
+  chipText: { ...typography.bodySmall },
+  chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
 
   exportButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -199,12 +201,11 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: spacing.md,
   },
-  exportButtonText: { ...typography.button, color: colors.white },
+  exportButtonText: { ...typography.button, color: '#FFFFFF' },
   disabledButton: { opacity: 0.6 },
 
   infoText: {
     ...typography.caption,
-    color: colors.textTertiary,
     textAlign: 'center',
     marginTop: spacing.md,
   },

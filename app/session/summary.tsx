@@ -16,11 +16,12 @@ import { syncService } from '@/services/sync/syncService';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { metersToMiles, metersToKm } from '@/services/fuel/unitConverter';
 import { formatDurationLabel } from '@/utils/formatting';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
 export default function SessionSummaryScreen() {
+  const colors = useColors();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -65,75 +66,75 @@ export default function SessionSummaryScreen() {
   const fuelUnit = volumeUnit === 'gal' ? 'gal' : 'L';
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 140 + insets.bottom }]}>
         {/* Header */}
         <View style={styles.header}>
           <Ionicons name="checkmark-circle" size={48} color={colors.success} />
-          <Text style={styles.title}>Drive Complete</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Drive Complete</Text>
         </View>
 
         {/* Cost */}
-        <View style={styles.costCard}>
-          <Text style={styles.costLabel}>ESTIMATED COST</Text>
-          <Text style={styles.costValue}>${(session.est_cost ?? 0).toFixed(2)}</Text>
+        <View style={[styles.costCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.costLabel, { color: colors.textTertiary }]}>ESTIMATED COST</Text>
+          <Text style={[styles.costValue, { color: colors.text }]}>${(session.est_cost ?? 0).toFixed(2)}</Text>
         </View>
 
         {/* Stats grid */}
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="speedometer-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{distance.toFixed(1)} {distanceUnit}</Text>
-            <Text style={styles.statLabel}>Distance</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{distance.toFixed(1)} {distanceUnit}</Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Distance</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="time-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{formatDurationLabel(durationSeconds)}</Text>
-            <Text style={styles.statLabel}>Duration</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{formatDurationLabel(durationSeconds)}</Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Duration</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="pause-circle-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{formatDurationLabel(session.stopped_seconds)}</Text>
-            <Text style={styles.statLabel}>Stopped</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{formatDurationLabel(session.stopped_seconds)}</Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Stopped</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="water-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{(session.est_fuel_used ?? 0).toFixed(2)} {fuelUnit}</Text>
-            <Text style={styles.statLabel}>Fuel Used</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{(session.est_fuel_used ?? 0).toFixed(2)} {fuelUnit}</Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Fuel Used</Text>
           </View>
         </View>
 
         {/* Details */}
-        <View style={styles.detailsCard}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Gas Price</Text>
-            <Text style={styles.detailValue}>
+        <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Gas Price</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>
               ${(session.gas_price_value ?? 0).toFixed(3)}/{session.gas_price_unit === 'per_gal' ? 'gal' : 'L'}
             </Text>
           </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Fuel Type</Text>
-            <Text style={styles.detailValue}>{session.fuel_type}</Text>
+          <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Fuel Type</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{session.fuel_type}</Text>
           </View>
           {session.route_enabled === 1 && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Route Points</Text>
-              <Text style={styles.detailValue}>{session.route_points_count}</Text>
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Route Points</Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>{session.route_points_count}</Text>
             </View>
           )}
           {gapCount > 0 && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Tracking Gaps</Text>
-              <Text style={styles.detailValue}>{gapCount}</Text>
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Tracking Gaps</Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>{gapCount}</Text>
             </View>
           )}
         </View>
 
         {/* Notes */}
-        <View style={styles.notesCard}>
-          <Text style={styles.notesLabel}>Notes</Text>
+        <View style={[styles.notesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.notesLabel, { color: colors.text }]}>Notes</Text>
           <TextInput
-            style={styles.notesInput}
+            style={[styles.notesInput, { color: colors.text, backgroundColor: colors.surfaceSecondary }]}
             placeholder="Add notes about this trip..."
             placeholderTextColor={colors.textTertiary}
             value={notes}
@@ -145,8 +146,8 @@ export default function SessionSummaryScreen() {
       </ScrollView>
 
       {/* Done button */}
-      <View style={[styles.footer, { paddingBottom: spacing.lg + insets.bottom }]}>
-        <TouchableOpacity style={styles.doneButton} onPress={handleDone} activeOpacity={0.8}>
+      <View style={[styles.footer, { paddingBottom: spacing.lg + insets.bottom, backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <TouchableOpacity style={[styles.doneButton, { backgroundColor: colors.primary }]} onPress={handleDone} activeOpacity={0.8}>
           <Text style={styles.doneButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
@@ -155,32 +156,28 @@ export default function SessionSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   content: { padding: spacing.lg },
 
   header: { alignItems: 'center', marginBottom: spacing.xl },
-  title: { ...typography.h1, color: colors.text, marginTop: spacing.sm },
+  title: { ...typography.h1, marginTop: spacing.sm },
 
   costCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     alignItems: 'center',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   costLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textTertiary,
     letterSpacing: 2,
     marginBottom: spacing.xs,
   },
   costValue: {
     fontSize: 48,
     fontWeight: '800',
-    color: colors.text,
     fontVariant: ['tabular-nums'],
   },
 
@@ -191,48 +188,39 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   statCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     alignItems: 'center',
     width: '48%',
     flexGrow: 1,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  statValue: { ...typography.h3, color: colors.text, marginTop: 6 },
-  statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  statValue: { ...typography.h3, marginTop: 6 },
+  statLabel: { ...typography.caption, marginTop: 2 },
 
   detailsCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  detailLabel: { ...typography.body, color: colors.textSecondary },
-  detailValue: { ...typography.body, color: colors.text, fontWeight: '600' },
+  detailLabel: { ...typography.body },
+  detailValue: { ...typography.body, fontWeight: '600' },
 
   notesCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  notesLabel: { ...typography.label, color: colors.text, marginBottom: spacing.sm },
+  notesLabel: { ...typography.label, marginBottom: spacing.sm },
   notesInput: {
     ...typography.body,
-    color: colors.text,
-    backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm,
     padding: spacing.sm,
     minHeight: 80,
@@ -245,15 +233,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: spacing.lg,
-    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   doneButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
   },
-  doneButtonText: { color: colors.white, fontSize: 18, fontWeight: '600' },
+  doneButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
 });

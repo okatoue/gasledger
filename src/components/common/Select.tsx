@@ -11,7 +11,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
@@ -41,6 +41,7 @@ export default function DropdownPicker({
   loading = false,
   error,
 }: DropdownPickerProps) {
+  const colors = useColors();
   const [visible, setVisible] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -70,18 +71,23 @@ export default function DropdownPicker({
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
       <TouchableOpacity
         style={[
           styles.trigger,
+          { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
           disabled && styles.triggerDisabled,
-          error ? styles.triggerError : null,
+          error ? { borderColor: colors.error } : null,
         ]}
         onPress={handleOpen}
         activeOpacity={disabled || loading ? 1 : 0.7}
       >
         <Text
-          style={[styles.triggerText, !selectedItem && styles.placeholderText]}
+          style={[
+            styles.triggerText,
+            { color: colors.text },
+            !selectedItem && { color: colors.textTertiary },
+          ]}
           numberOfLines={1}
         >
           {selectedItem ? selectedItem.text : placeholder}
@@ -92,7 +98,7 @@ export default function DropdownPicker({
           <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
         )}
       </TouchableOpacity>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
 
       <Modal visible={visible} transparent animationType="slide">
         <TouchableOpacity
@@ -100,10 +106,13 @@ export default function DropdownPicker({
           activeOpacity={1}
           onPress={() => setVisible(false)}
         >
-          <View style={styles.sheet} onStartShouldSetResponder={() => true}>
+          <View
+            style={[styles.sheet, { backgroundColor: colors.surface }]}
+            onStartShouldSetResponder={() => true}
+          >
             {/* Header */}
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{label}</Text>
+            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>{label}</Text>
               <TouchableOpacity onPress={() => setVisible(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -112,7 +121,10 @@ export default function DropdownPicker({
             {/* Search */}
             {items.length > 10 && (
               <TextInput
-                style={styles.searchInput}
+                style={[
+                  styles.searchInput,
+                  { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text },
+                ]}
                 placeholder="Search..."
                 placeholderTextColor={colors.textTertiary}
                 value={search}
@@ -130,11 +142,19 @@ export default function DropdownPicker({
                 const isSelected = item.value === selectedValue;
                 return (
                   <TouchableOpacity
-                    style={[styles.option, isSelected && styles.optionSelected]}
+                    style={[
+                      styles.option,
+                      { borderBottomColor: colors.border },
+                      isSelected && { backgroundColor: colors.surfaceSecondary },
+                    ]}
                     onPress={() => handleSelect(item)}
                   >
                     <Text
-                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
+                      style={[
+                        styles.optionText,
+                        { color: colors.text },
+                        isSelected && { color: colors.primary, fontWeight: '600' },
+                      ]}
                       numberOfLines={2}
                     >
                       {item.text}
@@ -146,7 +166,7 @@ export default function DropdownPicker({
                 );
               }}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>No results found</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No results found</Text>
               }
             />
           </View>
@@ -160,31 +180,24 @@ const styles = StyleSheet.create({
   wrapper: { marginBottom: 12 },
   label: {
     ...typography.label,
-    color: '#374151',
     marginBottom: spacing.xs + 2,
   },
   trigger: {
-    backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm + 2,
     padding: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   triggerDisabled: { opacity: 0.5 },
-  triggerError: { borderColor: colors.error },
   triggerText: {
     fontSize: 16,
-    color: colors.text,
     flex: 1,
     marginRight: 8,
   },
-  placeholderText: { color: colors.textTertiary },
   errorText: {
     ...typography.caption,
-    color: colors.error,
     marginTop: 4,
   },
 
@@ -195,7 +208,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.lg,
     borderTopRightRadius: borderRadius.lg,
     height: '70%',
@@ -207,19 +219,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  sheetTitle: { ...typography.h3, color: colors.text },
+  sheetTitle: { ...typography.h3 },
   searchInput: {
     margin: spacing.md,
     marginBottom: spacing.sm,
-    backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm + 2,
     padding: 10,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
   },
 
   // Options
@@ -230,14 +238,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
   },
-  optionSelected: { backgroundColor: colors.surfaceSecondary },
-  optionText: { ...typography.body, color: colors.text, flex: 1, marginRight: 8 },
-  optionTextSelected: { color: colors.primary, fontWeight: '600' },
+  optionText: { ...typography.body, flex: 1, marginRight: 8 },
   emptyText: {
     ...typography.body,
-    color: colors.textSecondary,
     textAlign: 'center',
     padding: spacing.xl,
   },

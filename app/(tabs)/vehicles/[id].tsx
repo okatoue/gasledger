@@ -13,7 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { vehicleService, Vehicle } from '@/services/vehicle/vehicleService';
 import DropdownPicker from '@/components/common/Select';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
@@ -26,6 +26,7 @@ const EFFICIENCY_UNITS = [
 ];
 
 export default function EditVehicleScreen() {
+  const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -97,41 +98,41 @@ export default function EditVehicleScreen() {
 
   if (loading || !vehicle) {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       {/* Vehicle info (read-only) */}
-      <View style={styles.infoCard}>
+      <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.infoHeader}>
           <Ionicons name="car-sport" size={28} color={colors.primary} />
-          <Text style={styles.infoTitle}>
+          <Text style={[styles.infoTitle, { color: colors.text }]}>
             {vehicle.year} {vehicle.make} {vehicle.model}
           </Text>
         </View>
         {vehicle.vin && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>VIN</Text>
-            <Text style={styles.infoValue}>{vehicle.vin}</Text>
+          <View style={[styles.infoRow, { borderTopColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>VIN</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>{vehicle.vin}</Text>
           </View>
         )}
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Fuel Type</Text>
-          <Text style={styles.infoValue}>{vehicle.fuel_type}</Text>
+        <View style={[styles.infoRow, { borderTopColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Fuel Type</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>{vehicle.fuel_type}</Text>
         </View>
       </View>
 
       {/* Editable fields */}
-      <View style={styles.editCard}>
-        <Text style={styles.sectionTitle}>Edit Details</Text>
+      <View style={[styles.editCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Edit Details</Text>
 
-        <Text style={styles.fieldLabel}>Fuel Efficiency</Text>
+        <Text style={[styles.fieldLabel, { color: colors.text }]}>Fuel Efficiency</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text }]}
           value={editEfficiency}
           onChangeText={setEditEfficiency}
           keyboardType="decimal-pad"
@@ -158,83 +159,73 @@ export default function EditVehicleScreen() {
 
       {/* Action buttons */}
       <TouchableOpacity
-        style={[styles.saveButton, saving && styles.disabledButton]}
+        style={[styles.saveButton, { backgroundColor: colors.primary }, saving && styles.disabledButton]}
         onPress={handleSave}
         disabled={saving}
       >
-        <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
+        <Text style={[styles.saveButtonText, { color: colors.white }]}>{saving ? 'Saving...' : 'Save Changes'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+      <TouchableOpacity style={[styles.deleteButton, { backgroundColor: colors.error }]} onPress={handleDelete}>
         <Ionicons name="trash" size={18} color={colors.white} />
-        <Text style={styles.deleteButtonText}>Delete Vehicle</Text>
+        <Text style={[styles.deleteButtonText, { color: colors.white }]}>Delete Vehicle</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: 40 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   infoCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   infoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  infoTitle: { ...typography.h2, color: colors.text, marginLeft: 10, flex: 1 },
+  infoTitle: { ...typography.h2, marginLeft: 10, flex: 1 },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
-  infoLabel: { ...typography.body, color: colors.textSecondary },
-  infoValue: { ...typography.body, color: colors.text, fontWeight: '600' },
+  infoLabel: { ...typography.body },
+  infoValue: { ...typography.body, fontWeight: '600' },
 
   editCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
-  fieldLabel: { ...typography.label, color: '#374151', marginBottom: spacing.xs + 2 },
+  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
+  fieldLabel: { ...typography.label, marginBottom: spacing.xs + 2 },
   input: {
-    backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm + 2,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: 12,
-    color: colors.text,
   },
 
   saveButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  saveButtonText: { ...typography.button, color: colors.white },
+  saveButtonText: { ...typography.button },
   disabledButton: { opacity: 0.6 },
 
   deleteButton: {
-    backgroundColor: colors.error,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -242,5 +233,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  deleteButtonText: { ...typography.button, color: colors.white },
+  deleteButtonText: { ...typography.button },
 });

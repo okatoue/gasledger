@@ -26,11 +26,15 @@ import { calculateFuelUsed, calculateCost } from '@/services/fuel/fuelCalculator
 import { formatDurationLabel } from '@/utils/formatting';
 import DropdownPicker from '@/components/common/Select';
 import { FUEL_TYPES } from '@/utils/fuelTypes';
-import { colors } from '@/theme/colors';
+import AdBanner from '@/components/common/AdBanner';
+import { adUnits } from '@/config/adUnits';
+import { BannerAdSize } from 'react-native-google-mobile-ads';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
 export default function SessionDetailScreen() {
+  const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const authSession = useAuthStore((s) => s.session);
@@ -169,7 +173,7 @@ export default function SessionDetailScreen() {
 
   if (loading || !session) {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -203,43 +207,43 @@ export default function SessionDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       {/* Date header */}
-      <Text style={styles.dateHeader}>{dateLabel}</Text>
+      <Text style={[styles.dateHeader, { color: colors.textSecondary }]}>{dateLabel}</Text>
 
       {/* Cost card */}
-      <View style={styles.costCard}>
-        <Text style={styles.costLabel}>ESTIMATED COST</Text>
-        <Text style={styles.costValue}>${(session.est_cost ?? 0).toFixed(2)}</Text>
+      <View style={[styles.costCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.costLabel, { color: colors.textTertiary }]}>ESTIMATED COST</Text>
+        <Text style={[styles.costValue, { color: colors.text }]}>${(session.est_cost ?? 0).toFixed(2)}</Text>
       </View>
 
       {/* Stats grid */}
       <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Ionicons name="speedometer-outline" size={20} color={colors.primary} />
-          <Text style={styles.statValue}>{distance.toFixed(1)} {distanceUnit}</Text>
-          <Text style={styles.statLabel}>Distance</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{distance.toFixed(1)} {distanceUnit}</Text>
+          <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Distance</Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Ionicons name="time-outline" size={20} color={colors.primary} />
-          <Text style={styles.statValue}>{formatDurationLabel(durationSeconds)}</Text>
-          <Text style={styles.statLabel}>Duration</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{formatDurationLabel(durationSeconds)}</Text>
+          <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Duration</Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Ionicons name="pause-circle-outline" size={20} color={colors.primary} />
-          <Text style={styles.statValue}>{formatDurationLabel(session.stopped_seconds)}</Text>
-          <Text style={styles.statLabel}>Stopped</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{formatDurationLabel(session.stopped_seconds)}</Text>
+          <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Stopped</Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Ionicons name="water-outline" size={20} color={colors.primary} />
-          <Text style={styles.statValue}>{(session.est_fuel_used ?? 0).toFixed(2)} {fuelUnit}</Text>
-          <Text style={styles.statLabel}>Fuel Used</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{(session.est_fuel_used ?? 0).toFixed(2)} {fuelUnit}</Text>
+          <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Fuel Used</Text>
         </View>
       </View>
 
       {/* Route map */}
       {showMap && (
-        <View style={styles.mapCard} pointerEvents="none">
+        <View style={[styles.mapCard, { borderColor: colors.border, backgroundColor: colors.surface }]} pointerEvents="none">
           <MapView
             provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
             style={StyleSheet.absoluteFill}
@@ -268,14 +272,17 @@ export default function SessionDetailScreen() {
         </View>
       )}
 
+      {/* Ad banner */}
+      <AdBanner unitId={adUnits.sessionDetail} size={BannerAdSize.MEDIUM_RECTANGLE} />
+
       {/* Details / Edit section */}
       {editing ? (
-        <View style={styles.detailsCard}>
-          <Text style={styles.sectionTitle}>Edit Session</Text>
+        <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Edit Session</Text>
 
-          <Text style={styles.fieldLabel}>Gas Price ($/unit)</Text>
+          <Text style={[styles.fieldLabel, { color: colors.text }]}>Gas Price ($/unit)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text }]}
             value={editGasPrice}
             onChangeText={setEditGasPrice}
             keyboardType="decimal-pad"
@@ -299,9 +306,9 @@ export default function SessionDetailScreen() {
             onSelect={(item) => setEditVehicleId(item.value)}
           />
 
-          <Text style={styles.fieldLabel}>Notes</Text>
+          <Text style={[styles.fieldLabel, { color: colors.text }]}>Notes</Text>
           <TextInput
-            style={[styles.input, styles.notesInput]}
+            style={[styles.input, styles.notesInput, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text }]}
             value={editNotes}
             onChangeText={setEditNotes}
             placeholder="Add notes..."
@@ -312,7 +319,7 @@ export default function SessionDetailScreen() {
 
           <View style={styles.editActions}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[styles.cancelButton, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
               onPress={() => {
                 setEditing(false);
                 setEditGasPrice(session.gas_price_value?.toString() ?? '');
@@ -321,41 +328,41 @@ export default function SessionDetailScreen() {
                 setEditNotes(session.notes ?? '');
               }}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.saveButton, saving && styles.disabledButton]}
+              style={[styles.saveButton, { backgroundColor: colors.primary }, saving && styles.disabledButton]}
               onPress={handleSave}
               disabled={saving}
             >
-              <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
+              <Text style={[styles.saveButtonText, { color: colors.white }]}>{saving ? 'Saving...' : 'Save'}</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
-        <View style={styles.detailsCard}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Gas Price</Text>
-            <Text style={styles.detailValue}>
+        <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Gas Price</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>
               ${(session.gas_price_value ?? 0).toFixed(3)}/{session.gas_price_unit === 'per_gal' ? 'gal' : 'L'}
             </Text>
           </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Fuel Type</Text>
-            <Text style={styles.detailValue}>{session.fuel_type}</Text>
+          <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Fuel Type</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{session.fuel_type}</Text>
           </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Vehicle</Text>
-            <Text style={styles.detailValue}>{vehicleLabel}</Text>
+          <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Vehicle</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{vehicleLabel}</Text>
           </View>
         </View>
       )}
 
       {/* Tracking Gaps */}
       {!editing && gaps.length > 0 && (
-        <View style={styles.detailsCard}>
-          <Text style={styles.sectionTitle}>Tracking Gaps</Text>
-          <Text style={styles.gapSummary}>
+        <View style={[styles.detailsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Tracking Gaps</Text>
+          <Text style={[styles.gapSummary, { color: colors.textSecondary }]}>
             {gaps.length} gap{gaps.length !== 1 ? 's' : ''} detected during this session
           </Text>
           {gaps.map((gap) => {
@@ -365,11 +372,11 @@ export default function SessionDetailScreen() {
               ? Math.floor((endTime.getTime() - startTime.getTime()) / 1000)
               : null;
             return (
-              <View key={gap.id} style={styles.detailRow}>
-                <Text style={styles.detailLabel}>
+              <View key={gap.id} style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
                   {format(startTime, 'h:mm:ss a')}
                 </Text>
-                <Text style={styles.detailValue}>
+                <Text style={[styles.detailValue, { color: colors.text }]}>
                   {durationS !== null ? formatDurationLabel(durationS) : 'Open'}
                 </Text>
               </View>
@@ -380,22 +387,22 @@ export default function SessionDetailScreen() {
 
       {/* Notes (read mode) */}
       {!editing && session.notes ? (
-        <View style={styles.notesCard}>
-          <Text style={styles.notesLabel}>Notes</Text>
-          <Text style={styles.notesText}>{session.notes}</Text>
+        <View style={[styles.notesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.notesLabel, { color: colors.text }]}>Notes</Text>
+          <Text style={[styles.notesText, { color: colors.textSecondary }]}>{session.notes}</Text>
         </View>
       ) : null}
 
       {/* Action buttons */}
       {!editing && (
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.editButton} onPress={() => setEditing(true)}>
+          <TouchableOpacity style={[styles.editButton, { backgroundColor: colors.primary }]} onPress={() => setEditing(true)}>
             <Ionicons name="pencil" size={18} color={colors.white} />
-            <Text style={styles.editButtonText}>Edit</Text>
+            <Text style={[styles.editButtonText, { color: colors.white }]}>Edit</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <TouchableOpacity style={[styles.deleteButton, { backgroundColor: colors.error }]} onPress={handleDelete}>
             <Ionicons name="trash" size={18} color={colors.white} />
-            <Text style={styles.deleteButtonText}>Delete</Text>
+            <Text style={[styles.deleteButtonText, { color: colors.white }]}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -404,32 +411,28 @@ export default function SessionDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: 40 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  dateHeader: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md },
+  dateHeader: { ...typography.body, textAlign: 'center', marginBottom: spacing.md },
 
   costCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     alignItems: 'center',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   costLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textTertiary,
     letterSpacing: 2,
     marginBottom: spacing.xs,
   },
   costValue: {
     fontSize: 48,
     fontWeight: '800',
-    color: colors.text,
     fontVariant: ['tabular-nums'],
   },
 
@@ -440,17 +443,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   statCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     alignItems: 'center',
     width: '48%',
     flexGrow: 1,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  statValue: { ...typography.h3, color: colors.text, marginTop: 6 },
-  statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  statValue: { ...typography.h3, marginTop: 6 },
+  statLabel: { ...typography.caption, marginTop: 2 },
 
   mapCard: {
     height: 200,
@@ -458,46 +459,37 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
   routeDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     borderWidth: 2,
-    borderColor: colors.white,
   },
   detailsCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  detailLabel: { ...typography.body, color: colors.textSecondary },
-  detailValue: { ...typography.body, color: colors.text, fontWeight: '600' },
+  detailLabel: { ...typography.body },
+  detailValue: { ...typography.body, fontWeight: '600' },
 
-  sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
-  gapSummary: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
-  fieldLabel: { ...typography.label, color: '#374151', marginBottom: spacing.xs + 2 },
+  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
+  gapSummary: { ...typography.caption, marginBottom: spacing.sm },
+  fieldLabel: { ...typography.label, marginBottom: spacing.xs + 2 },
   input: {
-    backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm + 2,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: 12,
-    color: colors.text,
   },
   notesInput: { minHeight: 80, textAlignVertical: 'top' },
 
@@ -507,31 +499,26 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
-    backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  cancelButtonText: { ...typography.button, color: colors.text },
+  cancelButtonText: { ...typography.button },
   saveButton: {
     flex: 1,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
-    backgroundColor: colors.primary,
   },
-  saveButtonText: { ...typography.button, color: colors.white },
+  saveButtonText: { ...typography.button },
   disabledButton: { opacity: 0.6 },
 
   notesCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  notesLabel: { ...typography.label, color: colors.text, marginBottom: spacing.sm },
-  notesText: { ...typography.body, color: colors.textSecondary },
+  notesLabel: { ...typography.label, marginBottom: spacing.sm },
+  notesText: { ...typography.body },
 
   actionButtons: { flexDirection: 'row', gap: spacing.sm },
   editButton: {
@@ -539,21 +526,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     gap: 6,
   },
-  editButtonText: { ...typography.button, color: colors.white },
+  editButtonText: { ...typography.button },
   deleteButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.error,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     gap: 6,
   },
-  deleteButtonText: { ...typography.button, color: colors.white },
+  deleteButtonText: { ...typography.button },
 });

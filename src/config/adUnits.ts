@@ -20,6 +20,10 @@ const prodUnits = {
     android: 'ca-app-pub-3459755575720995/2217903833',
     ios: 'ca-app-pub-3459755575720995/6949252697',
   }) ?? '',
+  sessionDetail: Platform.select({
+    android: 'ca-app-pub-3459755575720995/5308237071',
+    ios: 'ca-app-pub-3459755575720995/1847069448',
+  }) ?? '',
 };
 
 export const adUnits = USE_TEST_ADS
@@ -28,5 +32,6 @@ export const adUnits = USE_TEST_ADS
       dashboardBottom: TestIds.BANNER,
       history: TestIds.BANNER,
       vehicles: TestIds.BANNER,
+      sessionDetail: TestIds.BANNER,
     }
   : prodUnits;

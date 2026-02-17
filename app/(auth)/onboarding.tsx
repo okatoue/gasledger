@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { vehicleService } from '@/services/vehicle/vehicleService';
@@ -32,6 +32,7 @@ import DropdownPicker from '@/components/common/Select';
 type Tab = 'scan' | 'manual';
 
 export default function OnboardingScreen() {
+  const colors = useColors();
   const [step, setStep] = useState<2 | 3>(2);
   const [activeTab, setActiveTab] = useState<Tab>('scan');
   const [vin, setVin] = useState('');
@@ -43,10 +44,12 @@ export default function OnboardingScreen() {
   const setNeedsOnboarding = useAuthStore((s) => s.setNeedsOnboarding);
   const setRouteStorageEnabled = useSettingsStore((s) => s.setRouteStorageEnabled);
   const setLocationMode = useSettingsStore((s) => s.setLocationMode);
+  const setPostalCode = useSettingsStore((s) => s.setPostalCode);
   const routeStorageEnabled = useSettingsStore((s) => s.routeStorageEnabled);
   const { requestBackground } = useLocationPermission();
 
   // Step 3 state
+  const [step3PostalCode, setStep3PostalCode] = useState('');
   const [step3RouteStorage, setStep3RouteStorage] = useState(true);
   const [step3LocationMode, setStep3LocationMode] = useState<'full' | 'limited'>('full');
   const [isFinishing, setIsFinishing] = useState(false);
@@ -147,6 +150,7 @@ export default function OnboardingScreen() {
   const handleFinishOnboarding = async () => {
     setIsFinishing(true);
     try {
+      setPostalCode(step3PostalCode.trim());
       setRouteStorageEnabled(step3RouteStorage);
       setLocationMode(step3LocationMode);
       if (step3LocationMode === 'full') {
@@ -162,7 +166,7 @@ export default function OnboardingScreen() {
 
   return (
     <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -171,21 +175,21 @@ export default function OnboardingScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.progressBar}>
-              <View style={[styles.progressStep, styles.activeStep]} />
-              <View style={[styles.progressStep, styles.activeStep]} />
-              <View style={[styles.progressStep, step === 3 && styles.activeStep]} />
+              <View style={[styles.progressStep, { backgroundColor: colors.border }, { backgroundColor: colors.primary }]} />
+              <View style={[styles.progressStep, { backgroundColor: colors.border }, { backgroundColor: colors.primary }]} />
+              <View style={[styles.progressStep, { backgroundColor: colors.border }, step === 3 && { backgroundColor: colors.primary }]} />
             </View>
             {step === 2 ? (
               <>
-                <Text style={styles.title}>Let's set up your ride.</Text>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.title, { color: colors.text }]}>Let's set up your ride.</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   We need your vehicle details to calculate your exact gas mileage.
                 </Text>
               </>
             ) : (
               <>
-                <Text style={styles.title}>Almost done!</Text>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.title, { color: colors.text }]}>Almost done!</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   Choose your privacy and tracking preferences.
                 </Text>
               </>
@@ -195,31 +199,31 @@ export default function OnboardingScreen() {
           {step === 2 ? (
             <>
               {/* Option 1: VIN */}
-              <View style={[styles.card, activeTab === 'scan' && styles.activeCard]}>
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.black }, activeTab === 'scan' && { borderColor: colors.primary, borderWidth: 2 }]}>
                 <TouchableOpacity
                   style={styles.cardHeader}
                   onPress={() => setActiveTab('scan')}
                 >
-                  <View style={styles.radioCircle}>
-                    {activeTab === 'scan' && <View style={styles.selectedRb} />}
+                  <View style={[styles.radioCircle, { borderColor: colors.primary }]}>
+                    {activeTab === 'scan' && <View style={[styles.selectedRb, { backgroundColor: colors.primary }]} />}
                   </View>
-                  <Text style={styles.cardTitle}>Use VIN Number</Text>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>Use VIN Number</Text>
                 </TouchableOpacity>
 
                 {activeTab === 'scan' && (
                   <View style={styles.cardBody}>
-                    <TouchableOpacity style={styles.cameraButton}>
+                    <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.text }]}>
                       <Ionicons name="camera-outline" size={24} color={colors.white} />
-                      <Text style={styles.cameraButtonText}>Scan Barcode</Text>
+                      <Text style={[styles.cameraButtonText, { color: colors.white }]}>Scan Barcode</Text>
                     </TouchableOpacity>
 
                     <View style={styles.divider}>
-                      <Text style={styles.dividerText}>OR TYPE MANUALLY</Text>
+                      <Text style={[styles.dividerText, { color: colors.textTertiary }]}>OR TYPE MANUALLY</Text>
                     </View>
 
-                    <Text style={styles.label}>Vehicle Identification Number (VIN)</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>Vehicle Identification Number (VIN)</Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text }]}
                       placeholder="e.g. 1HGCM..."
                       placeholderTextColor={colors.textTertiary}
                       value={vin}
@@ -228,14 +232,14 @@ export default function OnboardingScreen() {
                       autoCorrect={false}
                       autoCapitalize="characters"
                     />
-                    <Text style={styles.helperText}>
+                    <Text style={[styles.helperText, { color: colors.textSecondary }]}>
                       {vin.length}/17 characters
                     </Text>
 
                     {isDecoding && (
                       <View style={styles.decodeStatus}>
                         <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={styles.decodeStatusText}>Decoding VIN...</Text>
+                        <Text style={[styles.decodeStatusText, { color: colors.textSecondary }]}>Decoding VIN...</Text>
                       </View>
                     )}
 
@@ -247,13 +251,13 @@ export default function OnboardingScreen() {
                     )}
 
                     {vinResult && (
-                      <View style={styles.vinResultCard}>
+                      <View style={[styles.vinResultCard, { backgroundColor: colors.surfaceSecondary }]}>
                         <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                         <View style={{ marginLeft: 10, flex: 1 }}>
-                          <Text style={styles.vinResultTitle}>
+                          <Text style={[styles.vinResultTitle, { color: colors.text }]}>
                             {vinResult.year} {vinResult.make} {vinResult.model}
                           </Text>
-                          <Text style={styles.vinResultSub}>
+                          <Text style={[styles.vinResultSub, { color: colors.textSecondary }]}>
                             Fuel: {vinResult.fuelType}
                           </Text>
                         </View>
@@ -264,23 +268,23 @@ export default function OnboardingScreen() {
               </View>
 
               {/* Option 2: Manual Entry */}
-              <View style={[styles.card, activeTab === 'manual' && styles.activeCard]}>
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.black }, activeTab === 'manual' && { borderColor: colors.primary, borderWidth: 2 }]}>
                 <TouchableOpacity
                   style={styles.cardHeader}
                   onPress={() => setActiveTab('manual')}
                 >
-                  <View style={styles.radioCircle}>
-                    {activeTab === 'manual' && <View style={styles.selectedRb} />}
+                  <View style={[styles.radioCircle, { borderColor: colors.primary }]}>
+                    {activeTab === 'manual' && <View style={[styles.selectedRb, { backgroundColor: colors.primary }]} />}
                   </View>
-                  <Text style={styles.cardTitle}>Enter Make & Model</Text>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>Enter Make & Model</Text>
                 </TouchableOpacity>
 
                 {activeTab === 'manual' && (
                   <View style={styles.cardBody}>
                     {/* Year — full width */}
-                    <Text style={styles.label}>Year</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>Year</Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text }]}
                       placeholder="2024"
                       placeholderTextColor={colors.textTertiary}
                       keyboardType="numeric"
@@ -329,7 +333,7 @@ export default function OnboardingScreen() {
                     {fuelLookup.detailLoading && (
                       <View style={styles.decodeStatus}>
                         <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={styles.decodeStatusText}>Loading vehicle data...</Text>
+                        <Text style={[styles.decodeStatusText, { color: colors.textSecondary }]}>Loading vehicle data...</Text>
                       </View>
                     )}
 
@@ -343,14 +347,14 @@ export default function OnboardingScreen() {
                     )}
 
                     {fuelLookup.vehicleDetails && (
-                      <View style={styles.vinResultCard}>
+                      <View style={[styles.vinResultCard, { backgroundColor: colors.surfaceSecondary }]}>
                         <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                         <View style={{ marginLeft: 10, flex: 1 }}>
-                          <Text style={styles.vinResultTitle}>
+                          <Text style={[styles.vinResultTitle, { color: colors.text }]}>
                             {fuelLookup.vehicleDetails.year} {fuelLookup.vehicleDetails.make}{' '}
                             {fuelLookup.vehicleDetails.model}
                           </Text>
-                          <Text style={styles.vinResultSub}>
+                          <Text style={[styles.vinResultSub, { color: colors.textSecondary }]}>
                             Combined: {fuelLookup.vehicleDetails.comb08} MPG {'  '}
                             Fuel: {normalizeFuelInfo(fuelLookup.vehicleDetails.fuelType1).fuelType}
                           </Text>
@@ -363,14 +367,38 @@ export default function OnboardingScreen() {
             </>
           ) : (
             <>
-              {/* Step 3: Route Storage + Location Mode */}
-              <View style={styles.card}>
+              {/* Step 3: Postal Code */}
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.black }]}>
+                <View style={styles.step3ToggleRow}>
+                  <View style={styles.step3ToggleInfo}>
+                    <Ionicons name="location-outline" size={20} color={colors.primary} />
+                    <View style={styles.step3ToggleTextWrapper}>
+                      <Text style={[styles.step3ToggleLabel, { color: colors.text }]}>Your Zip / Postal Code</Text>
+                      <Text style={[styles.step3ToggleHint, { color: colors.textTertiary }]}>
+                        Used to find gas stations near you
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text, marginTop: spacing.sm, marginBottom: 0 }]}
+                  placeholder="e.g. 90210"
+                  placeholderTextColor={colors.textTertiary}
+                  value={step3PostalCode}
+                  onChangeText={setStep3PostalCode}
+                  autoCorrect={false}
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              {/* Route Storage toggle */}
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.black }]}>
                 <View style={styles.step3ToggleRow}>
                   <View style={styles.step3ToggleInfo}>
                     <Ionicons name="navigate-outline" size={20} color={colors.primary} />
                     <View style={styles.step3ToggleTextWrapper}>
-                      <Text style={styles.step3ToggleLabel}>Route Storage</Text>
-                      <Text style={styles.step3ToggleHint}>
+                      <Text style={[styles.step3ToggleLabel, { color: colors.text }]}>Route Storage</Text>
+                      <Text style={[styles.step3ToggleHint, { color: colors.textTertiary }]}>
                         Save GPS route points with each session for detailed trip maps
                       </Text>
                     </View>
@@ -384,25 +412,25 @@ export default function OnboardingScreen() {
                 </View>
               </View>
 
-              <Text style={styles.step3SectionLabel}>Location Tracking Mode</Text>
+              <Text style={[styles.step3SectionLabel, { color: colors.text }]}>Location Tracking Mode</Text>
 
               <TouchableOpacity
-                style={[styles.card, step3LocationMode === 'full' && styles.activeCard]}
+                style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.black }, step3LocationMode === 'full' && { borderColor: colors.primary, borderWidth: 2 }]}
                 onPress={() => setStep3LocationMode('full')}
                 activeOpacity={0.7}
               >
                 <View style={styles.cardHeader}>
-                  <View style={styles.radioCircle}>
-                    {step3LocationMode === 'full' && <View style={styles.selectedRb} />}
+                  <View style={[styles.radioCircle, { borderColor: colors.primary }]}>
+                    {step3LocationMode === 'full' && <View style={[styles.selectedRb, { backgroundColor: colors.primary }]} />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={styles.cardTitle}>Full Tracking</Text>
-                      <View style={styles.recommendedBadge}>
-                        <Text style={styles.recommendedText}>Recommended</Text>
+                      <Text style={[styles.cardTitle, { color: colors.text }]}>Full Tracking</Text>
+                      <View style={[styles.recommendedBadge, { backgroundColor: colors.primaryLight }]}>
+                        <Text style={[styles.recommendedText, { color: colors.white }]}>Recommended</Text>
                       </View>
                     </View>
-                    <Text style={styles.step3OptionDesc}>
+                    <Text style={[styles.step3OptionDesc, { color: colors.textSecondary }]}>
                       Tracks your drive reliably in the background, even when the screen is off
                     </Text>
                   </View>
@@ -410,17 +438,17 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.card, step3LocationMode === 'limited' && styles.activeCard]}
+                style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.black }, step3LocationMode === 'limited' && { borderColor: colors.primary, borderWidth: 2 }]}
                 onPress={() => setStep3LocationMode('limited')}
                 activeOpacity={0.7}
               >
                 <View style={styles.cardHeader}>
-                  <View style={styles.radioCircle}>
-                    {step3LocationMode === 'limited' && <View style={styles.selectedRb} />}
+                  <View style={[styles.radioCircle, { borderColor: colors.primary }]}>
+                    {step3LocationMode === 'limited' && <View style={[styles.selectedRb, { backgroundColor: colors.primary }]} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Limited Mode</Text>
-                    <Text style={styles.step3OptionDesc}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Limited Mode</Text>
+                    <Text style={[styles.step3OptionDesc, { color: colors.textSecondary }]}>
                       May pause tracking when the app goes to the background
                     </Text>
                   </View>
@@ -431,22 +459,22 @@ export default function OnboardingScreen() {
         </ScrollView>
 
         {/* Sticky Footer */}
-        <SafeAreaView edges={['bottom']} style={styles.footer}>
+        <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           {step === 2 ? (
             <TouchableOpacity
-              style={[styles.primaryButton, (!isFormValid || isSaving) && styles.disabledButton]}
+              style={[styles.primaryButton, { backgroundColor: colors.primary }, (!isFormValid || isSaving) && { backgroundColor: colors.primaryLight }]}
               disabled={!isFormValid || isSaving}
               onPress={handleSave}
             >
-              <Text style={styles.primaryButtonText}>{isSaving ? 'Saving...' : 'Save & Continue'}</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.white }]}>{isSaving ? 'Saving...' : 'Save & Continue'}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.primaryButton, isFinishing && styles.disabledButton]}
-              disabled={isFinishing}
+              style={[styles.primaryButton, { backgroundColor: colors.primary }, (isFinishing || !step3PostalCode.trim()) && { backgroundColor: colors.primaryLight }]}
+              disabled={isFinishing || !step3PostalCode.trim()}
               onPress={handleFinishOnboarding}
             >
-              <Text style={styles.primaryButtonText}>{isFinishing ? 'Setting up...' : 'Get Started'}</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.white }]}>{isFinishing ? 'Setting up...' : 'Get Started'}</Text>
             </TouchableOpacity>
           )}
         </SafeAreaView>
@@ -457,7 +485,7 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.lg },
 
   // Header
@@ -467,30 +495,24 @@ const styles = StyleSheet.create({
     width: 30,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.border,
     marginRight: spacing.sm,
   },
-  activeStep: { backgroundColor: colors.primary },
-  title: { ...typography.h1, color: colors.text, marginBottom: spacing.sm },
-  subtitle: { ...typography.body, color: colors.textSecondary, lineHeight: 24 },
+  title: { ...typography.h1, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, lineHeight: 24 },
 
   // Cards
   card: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  activeCard: { borderColor: colors.primary, borderWidth: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  cardTitle: { ...typography.h3, marginLeft: 12, color: colors.text },
+  cardTitle: { ...typography.h3, marginLeft: 12 },
   cardBody: { marginTop: spacing.md, paddingLeft: 34 },
 
   // Radio Button
@@ -499,7 +521,6 @@ const styles = StyleSheet.create({
     width: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -507,26 +528,21 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.primary,
   },
 
   // Inputs
   input: {
-    backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm + 2,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: 12,
-    color: colors.text,
   },
-  label: { ...typography.label, color: '#374151', marginBottom: spacing.xs + 2 },
-  helperText: { ...typography.caption, color: colors.textSecondary, textAlign: 'right', marginTop: -8 },
+  label: { ...typography.label, marginBottom: spacing.xs + 2 },
+  helperText: { ...typography.caption, textAlign: 'right', marginTop: -8 },
 
   // Camera Button
   cameraButton: {
-    backgroundColor: colors.text,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -535,7 +551,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cameraButtonText: {
-    color: colors.white,
     fontWeight: '600',
     marginLeft: spacing.sm,
     fontSize: 16,
@@ -546,25 +561,20 @@ const styles = StyleSheet.create({
   dividerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textTertiary,
     letterSpacing: 1,
   },
 
   // Footer
   footer: {
     padding: spacing.lg,
-    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: 12,
     alignItems: 'center',
   },
-  disabledButton: { backgroundColor: colors.primaryLight },
-  primaryButtonText: { color: colors.white, fontSize: 18, fontWeight: '600' },
+  primaryButtonText: { fontSize: 18, fontWeight: '600' },
 
   row: { flexDirection: 'row' },
 
@@ -576,14 +586,12 @@ const styles = StyleSheet.create({
   },
   decodeStatusText: {
     ...typography.caption,
-    color: colors.textSecondary,
     marginLeft: spacing.sm,
     flex: 1,
   },
   vinResultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceSecondary,
     padding: spacing.md,
     borderRadius: borderRadius.md,
     marginTop: spacing.md,
@@ -591,11 +599,9 @@ const styles = StyleSheet.create({
   vinResultTitle: {
     ...typography.body,
     fontWeight: '600',
-    color: colors.text,
   },
   vinResultSub: {
     ...typography.caption,
-    color: colors.textSecondary,
     marginTop: 2,
   },
 
@@ -607,15 +613,14 @@ const styles = StyleSheet.create({
   },
   step3ToggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.md },
   step3ToggleTextWrapper: { marginLeft: spacing.sm + 2, flex: 1 },
-  step3ToggleLabel: { ...typography.label, color: colors.text },
-  step3ToggleHint: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
-  step3SectionLabel: { ...typography.label, color: colors.text, marginBottom: spacing.sm, marginTop: spacing.sm },
-  step3OptionDesc: { ...typography.caption, color: colors.textSecondary, marginTop: 4, marginLeft: 34 },
+  step3ToggleLabel: { ...typography.label },
+  step3ToggleHint: { ...typography.caption, marginTop: 2 },
+  step3SectionLabel: { ...typography.label, marginBottom: spacing.sm, marginTop: spacing.sm },
+  step3OptionDesc: { ...typography.caption, marginTop: 4, marginLeft: 34 },
   recommendedBadge: {
-    backgroundColor: colors.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  recommendedText: { fontSize: 11, fontWeight: '600', color: colors.white },
+  recommendedText: { fontSize: 11, fontWeight: '600' },
 });

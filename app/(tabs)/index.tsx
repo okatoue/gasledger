@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useVehicleStore } from '@/stores/vehicleStore';
 import type { Vehicle } from '@/services/vehicle/vehicleService';
-import { metersToMiles } from '@/services/fuel/unitConverter';
+import { calculateTripCost } from '@/services/fuel/fuelCalculator';
 import { useTracking } from '@/hooks/useTracking';
 import { useGasPrice } from '@/hooks/useGasPrice';
 import { useHomeStation } from '@/hooks/useHomeStation';
@@ -36,17 +36,11 @@ import { useLocationPermission } from '@/hooks/useLocationPermission';
 import { useSubscription } from '@/hooks/useSubscription';
 import AdBanner from '@/components/common/AdBanner';
 import { adUnits } from '@/config/adUnits';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
+import { colors as staticColors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
-// Trip cost formula: (distance_miles / efficiency_mpg) * price_per_gallon
-function calculateTripCost(distanceM: number, efficiencyMpg: number, gasPricePerGal: number): number {
-  if (efficiencyMpg <= 0) return 0;
-  const miles = metersToMiles(distanceM);
-  const gallonsUsed = miles / efficiencyMpg;
-  return gallonsUsed * gasPricePerGal;
-}
 
 // ═══════════════════════════════════════════════════════
 // PARKED DASHBOARD
@@ -70,6 +64,8 @@ function ParkedDashboard({
   isPro,
   onSelectStationPrice,
   onToggleHome,
+  postalCode,
+  onPostalCodeChange,
 }: {
   onStartDrive: () => void;
   gasPrice: number;
@@ -89,7 +85,11 @@ function ParkedDashboard({
   isPro: boolean;
   onSelectStationPrice: (price: number) => void;
   onToggleHome: (station: import('@/services/places/placesService').GasStation) => void;
+  postalCode: string | null;
+  onPostalCodeChange: (code: string) => void;
 }) {
+  const colors = useColors();
+  const router = useRouter();
   const [priceText, setPriceText] = useState(gasPrice.toFixed(3));
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -114,40 +114,53 @@ function ParkedDashboard({
 
   return (
     <View style={styles.parkedContainer}>
-      {/* A. Active Vehicle Card */}
-      <TouchableOpacity style={[styles.vehicleCard, isPro && { marginBottom: spacing.lg }]} activeOpacity={0.7} onPress={onSelectVehicle}>
-        <View style={styles.vehicleInfo}>
-          <Ionicons name="car-sport" size={28} color={colors.primary} />
-          <View style={styles.vehicleText}>
-            <Text style={styles.vehicleLabel}>Active Vehicle</Text>
-            <Text style={styles.vehicleName}>
-              {vehicle.year} {vehicle.make} {vehicle.model}
-            </Text>
+      {/* A. Active Vehicle Card / Upgrade to Pro */}
+      {isPro ? (
+        <TouchableOpacity style={[styles.vehicleCard, { marginBottom: spacing.lg, backgroundColor: colors.surface, shadowColor: colors.black }]} activeOpacity={0.7} onPress={onSelectVehicle}>
+          <View style={styles.vehicleInfo}>
+            <Ionicons name="car-sport" size={28} color={colors.primary} />
+            <View style={styles.vehicleText}>
+              <Text style={[styles.vehicleLabel, { color: colors.textTertiary }]}>Active Vehicle</Text>
+              <Text style={[styles.vehicleName, { color: colors.text }]}>
+                {vehicle.year} {vehicle.make} {vehicle.model}
+              </Text>
+            </View>
           </View>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-      </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={[styles.vehicleCard, { backgroundColor: colors.surface, shadowColor: colors.black }]} activeOpacity={0.7} onPress={() => router.push('/pro')}>
+          <View style={styles.vehicleInfo}>
+            <Ionicons name="star" size={28} color={colors.warning} />
+            <View style={styles.vehicleText}>
+              <Text style={[styles.vehicleName, { color: colors.text }]}>Upgrade to Pro</Text>
+              <Text style={[styles.vehicleLabel, { color: colors.textTertiary }]}>Go ad-free & unlock all features</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+      )}
 
       <AdBanner unitId={adUnits.dashboardTop} style={{ marginTop: 0 }} />
 
       {/* Fuel / Price / Stations Card */}
-      <View style={[styles.fuelPriceCard, !isPro && { marginBottom: spacing.sm }]}>
+      <View style={[styles.fuelPriceCard, { backgroundColor: colors.surface, shadowColor: colors.black }, !isPro && { marginBottom: spacing.sm }]}>
         {/* Fuel Grade Picker */}
         <FuelTypePicker selected={selectedFuelType} onSelect={onChangeFuelType} />
 
-        <View style={styles.fuelPriceDivider} />
+        <View style={[styles.fuelPriceDivider, { backgroundColor: colors.border }]} />
 
         {/* Est. Gas Price */}
         <View style={styles.priceRow}>
           <View style={styles.priceLeft}>
             <Ionicons name="pricetag" size={20} color={colors.warning} />
-            <Text style={styles.priceLabel}>Est. Gas Price</Text>
+            <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>Est. Gas Price</Text>
           </View>
           <View style={styles.priceRight}>
-            <Text style={styles.priceCurrency}>$</Text>
+            <Text style={[styles.priceCurrency, { color: colors.text }]}>$</Text>
             {isEditingPrice ? (
               <TextInput
-                style={styles.priceInput}
+                style={[styles.priceInput, { color: colors.text }]}
                 value={priceText}
                 keyboardType="number-pad"
                 returnKeyType="done"
@@ -175,21 +188,17 @@ function ParkedDashboard({
               <TouchableOpacity onPress={() => setIsEditingPrice(true)} activeOpacity={0.7}>
                 <RollingPrice
                   value={gasPrice.toFixed(3)}
-                  textStyle={styles.priceDigit}
+                  textStyle={{ ...styles.priceDigit, color: colors.text }}
                   height={24}
                   duration={250}
                 />
               </TouchableOpacity>
             )}
-            <Text style={styles.priceUnit}>/{volumeUnit}</Text>
+            <Text style={[styles.priceUnit, { color: colors.text }]}>/{volumeUnit}</Text>
           </View>
         </View>
-        {priceSource === 'home_station' && homeStationName && (
-          <Text style={styles.homeStationHint}>{homeStationName}</Text>
-        )}
-
         {/* Nearby Stations */}
-        <View style={styles.fuelPriceDivider} />
+        <View style={[styles.fuelPriceDivider, { backgroundColor: colors.border }]} />
         <NearbyStationsBar
           stations={stations}
           isLoading={stationsLoading}
@@ -200,6 +209,9 @@ function ParkedDashboard({
           isPro={isPro}
           onSelectPrice={onSelectStationPrice}
           onToggleHome={onToggleHome}
+          postalCode={postalCode}
+          onPostalCodeChange={onPostalCodeChange}
+          onFuelTypeChange={onChangeFuelType}
           embedded
         />
       </View>
@@ -209,8 +221,8 @@ function ParkedDashboard({
       {/* C. Big Start Button */}
       <View style={styles.startButtonContainer}>
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <TouchableOpacity style={styles.startButton} onPress={onStartDrive} activeOpacity={0.8}>
-            <Ionicons name="navigate" size={24} color={colors.white} />
+          <TouchableOpacity style={[styles.startButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={onStartDrive} activeOpacity={0.8}>
+            <Ionicons name="navigate" size={24} color="#FFFFFF" />
             <Text style={styles.startButtonText}>START DRIVE</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -235,6 +247,7 @@ function ActiveDashboard({
   const { distanceM, elapsedSeconds, gpsSignal, isTracking, isTrackingPaused } = useSessionStore();
   const updateStats = useSessionStore((s) => s.updateStats);
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
+  const volumeUnit = useSettingsStore((s) => s.volumeUnit);
 
   // Live timer — ticks every second while tracking
   const startTimeRef = useRef(Date.now() - elapsedSeconds * 1000);
@@ -249,7 +262,13 @@ function ActiveDashboard({
   }, [isTracking, distanceM]);
 
   // Dynamic trip cost from formula
-  const tripCost = calculateTripCost(distanceM, vehicle.efficiency_value, gasPrice);
+  const tripCost = calculateTripCost(
+    distanceM,
+    vehicle.efficiency_value,
+    vehicle.efficiency_unit,
+    gasPrice,
+    volumeUnit,
+  );
 
   // Animated cost ticker
   const [displayCost, setDisplayCost] = useState(tripCost);
@@ -269,7 +288,7 @@ function ActiveDashboard({
     requestAnimationFrame(animate);
   }, [tripCost]);
 
-  const gpsColor = gpsSignal === 'good' ? colors.success : gpsSignal === 'weak' ? colors.warning : colors.error;
+  const gpsColor = gpsSignal === 'good' ? staticColors.success : gpsSignal === 'weak' ? staticColors.warning : staticColors.error;
   const gpsLabel = gpsSignal === 'good' ? 'Strong GPS' : gpsSignal === 'weak' ? 'Weak Signal' : 'Signal Lost';
 
   const handleStop = () => {
@@ -313,13 +332,13 @@ function ActiveDashboard({
       {/* B. Secondary Metrics */}
       <View style={styles.metricsRow}>
         <View style={styles.metricItem}>
-          <Ionicons name="speedometer-outline" size={22} color={colors.textSecondary} />
+          <Ionicons name="speedometer-outline" size={22} color={staticColors.textSecondary} />
           <Text style={styles.metricValue}>{formatDistance(distanceM, distanceUnit)}</Text>
           <Text style={styles.metricLabel}>Distance</Text>
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
-          <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
+          <Ionicons name="time-outline" size={22} color={staticColors.textSecondary} />
           <Text style={styles.metricValue}>{formatDurationTimer(elapsedSeconds)}</Text>
           <Text style={styles.metricLabel}>Duration</Text>
         </View>
@@ -333,7 +352,7 @@ function ActiveDashboard({
           onLongPress={onStop}
           activeOpacity={0.8}
         >
-          <Ionicons name="stop" size={32} color={colors.white} />
+          <Ionicons name="stop" size={32} color={staticColors.white} />
           <Text style={styles.stopButtonText}>STOP</Text>
         </TouchableOpacity>
         <Text style={styles.stopHint}>Tap to stop &middot; Long-press to skip confirmation</Text>
@@ -358,32 +377,37 @@ function VehiclePickerModal({
   onSelect: (vehicle: Vehicle) => void;
   onClose: () => void;
 }) {
+  const colors = useColors();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade">
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]} onPress={() => {}}>
-          <Text style={styles.modalTitle}>Select Vehicle</Text>
-          <Text style={styles.modalSubtitle}>Choose which vehicle you're driving</Text>
+        <Pressable style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) + 20, backgroundColor: colors.surface }]} onPress={() => {}}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Select Vehicle</Text>
+          <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>Choose which vehicle you're driving</Text>
           <View style={styles.vehicleList}>
             {vehicles.map((v) => {
               const isSelected = v.id === selectedId;
               return (
                 <TouchableOpacity
                   key={v.id}
-                  style={[styles.vehicleOption, isSelected && styles.vehicleOptionSelected]}
+                  style={[
+                    styles.vehicleOption,
+                    { borderColor: colors.border, backgroundColor: colors.surface },
+                    isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryBg },
+                  ]}
                   activeOpacity={0.7}
                   onPress={() => onSelect(v)}
                 >
                   <View style={styles.vehicleOptionLeft}>
-                    <View style={styles.vehicleRadio}>
-                      {isSelected && <View style={styles.vehicleRadioFill} />}
+                    <View style={[styles.vehicleRadio, { borderColor: colors.primary }]}>
+                      {isSelected && <View style={[styles.vehicleRadioFill, { backgroundColor: colors.primary }]} />}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.vehicleOptionName, isSelected && styles.vehicleOptionNameSelected]}>
+                      <Text style={[styles.vehicleOptionName, { color: colors.text }, isSelected && { color: colors.primary }]}>
                         {v.year} {v.make} {v.model}
                       </Text>
-                      <Text style={styles.vehicleOptionDetail}>
+                      <Text style={[styles.vehicleOptionDetail, { color: colors.textTertiary }]}>
                         {v.efficiency_value > 0 ? `${v.efficiency_value} ${v.efficiency_unit.toUpperCase()}` : v.fuel_type}
                       </Text>
                     </View>
@@ -408,6 +432,7 @@ const SELECTED_VEHICLE_KEY = 'gasledger_selected_vehicle_id';
 // MAIN DASHBOARD SCREEN
 // ═══════════════════════════════════════════════════════
 export default function DashboardScreen() {
+  const colors = useColors();
   const { activeSessionId } = useSessionStore();
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
   const volumeUnit = useSettingsStore((s) => s.volumeUnit);
@@ -415,6 +440,8 @@ export default function DashboardScreen() {
   const { startTracking, stopTracking } = useTracking();
   const locationMode = useSettingsStore((s) => s.locationMode);
   const setLocationMode = useSettingsStore((s) => s.setLocationMode);
+  const postalCode = useSettingsStore((s) => s.postalCode);
+  const setPostalCode = useSettingsStore((s) => s.setPostalCode);
   const { requestBackground } = useLocationPermission();
   const { isPro } = useSubscription();
 
@@ -555,6 +582,13 @@ export default function DashboardScreen() {
     ).catch(() => {});
   };
 
+  const handlePostalCodeChange = useCallback((code: string) => {
+    setPostalCode(code);
+    // Clear cached postal so refresh will re-fetch
+    SecureStore.deleteItemAsync('gasledger_last_station_search_postal').catch(() => {});
+    setTimeout(() => nearbyStations.refresh(), 100);
+  }, [setPostalCode, nearbyStations]);
+
   const handleStopDrive = async () => {
     if (!selectedVehicle) return;
     await stopTracking(selectedVehicle.efficiency_value, gasPrice);
@@ -562,7 +596,7 @@ export default function DashboardScreen() {
 
   if (!selectedVehicle) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ ...typography.body, color: colors.textSecondary }}>Loading vehicles...</Text>
         </View>
@@ -571,7 +605,7 @@ export default function DashboardScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, isActive && styles.activeBackground]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }, isActive && styles.activeBackground]}>
       {isActive ? (
         <ActiveDashboard onStop={handleStopDrive} vehicle={selectedVehicle} gasPrice={gasPrice} />
       ) : (
@@ -592,6 +626,8 @@ export default function DashboardScreen() {
           stationsError={nearbyStations.error}
           homeStationPlaceId={homeStation.homeStation?.place_id ?? null}
           isPro={isPro}
+          postalCode={postalCode}
+          onPostalCodeChange={handlePostalCodeChange}
           onSelectStationPrice={handleChangePrice}
           onToggleHome={(station) => {
             if (station.placeId === homeStation.homeStation?.place_id) {
@@ -629,7 +665,7 @@ export default function DashboardScreen() {
 // STYLES
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   activeBackground: { backgroundColor: '#0F172A' },
   scrollView: { flex: 1 },
   parkedContainer: { flex: 1, padding: spacing.lg, paddingBottom: 40 },
@@ -637,7 +673,6 @@ const styles = StyleSheet.create({
 
   // ── Vehicle Card ──
   vehicleCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
@@ -645,7 +680,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
@@ -653,16 +687,14 @@ const styles = StyleSheet.create({
   },
   vehicleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   vehicleText: { marginLeft: 10, flex: 1 },
-  vehicleLabel: { ...typography.caption, color: colors.textTertiary, fontSize: 11 },
-  vehicleName: { ...typography.label, color: colors.text },
+  vehicleLabel: { ...typography.caption, fontSize: 11 },
+  vehicleName: { ...typography.label },
 
   // ── Fuel / Price / Stations Card ──
   fuelPriceCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
@@ -670,7 +702,6 @@ const styles = StyleSheet.create({
   },
   fuelPriceDivider: {
     height: 1,
-    backgroundColor: colors.border,
     marginVertical: spacing.md,
   },
   priceRow: {
@@ -679,13 +710,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   priceLeft: { flexDirection: 'row', alignItems: 'center' },
-  priceLabel: { ...typography.label, color: colors.textSecondary, marginLeft: 8 },
-  homeStationHint: { ...typography.caption, color: colors.primary, marginTop: spacing.xs, marginLeft: spacing.xs },
+  priceLabel: { ...typography.label, marginLeft: 8 },
+  homeStationHint: { ...typography.caption, marginTop: spacing.xs, marginLeft: spacing.xs },
   priceRight: { flexDirection: 'row', alignItems: 'center' },
-  priceCurrency: { ...typography.h3, color: colors.text },
-  priceInput: { ...typography.h3, color: colors.text, width: 62, padding: 0, textAlign: 'center', marginBottom: 2 },
-  priceDigit: { ...typography.h3, color: colors.text, textAlign: 'center' },
-  priceUnit: { ...typography.h3, color: colors.text },
+  priceCurrency: { ...typography.h3 },
+  priceInput: { ...typography.h3, width: 62, padding: 0, textAlign: 'center', marginBottom: 2 },
+  priceDigit: { ...typography.h3, textAlign: 'center' },
+  priceUnit: { ...typography.h3 },
 
   // ── Start Button ──
   startButtonContainer: { alignItems: 'center', marginBottom: spacing.xl + 8 },
@@ -697,22 +728,20 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 80,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
   },
   startButtonText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 1,
   },
 
 
-  // ═══ ACTIVE STATE ═══
+  // ═══ ACTIVE STATE (intentionally hardcoded dark colors) ═══
   activeContainer: { flex: 1, padding: spacing.lg, justifyContent: 'space-between' },
 
   // ── GPS Bar ──
@@ -763,7 +792,7 @@ const styles = StyleSheet.create({
   taxiCost: {
     fontSize: 64,
     fontWeight: '800',
-    color: colors.white,
+    color: '#FFFFFF',
     fontVariant: ['tabular-nums'],
   },
 
@@ -776,7 +805,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   metricItem: { flex: 1, alignItems: 'center' },
-  metricValue: { ...typography.h2, color: colors.white, marginTop: 6 },
+  metricValue: { ...typography.h2, color: '#FFFFFF', marginTop: 6 },
   metricLabel: { ...typography.caption, color: '#64748B', marginTop: 2 },
   metricDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
 
@@ -786,17 +815,17 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: colors.error,
+    backgroundColor: staticColors.error,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.error,
+    shadowColor: staticColors.error,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
   },
   stopButtonText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
     marginTop: 4,
@@ -811,13 +840,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: spacing.lg,
   },
-  modalTitle: { ...typography.h2, color: colors.text, marginBottom: 4 },
-  modalSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.lg },
+  modalTitle: { ...typography.h2, marginBottom: 4 },
+  modalSubtitle: { ...typography.bodySmall, marginBottom: spacing.lg },
   vehicleList: { gap: 10 },
   vehicleOption: {
     flexDirection: 'row',
@@ -826,12 +854,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  vehicleOptionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: '#EFF6FF',
   },
   vehicleOptionLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   vehicleRadio: {
@@ -839,7 +861,6 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -848,9 +869,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.primary,
   },
-  vehicleOptionName: { ...typography.label, color: colors.text },
-  vehicleOptionNameSelected: { color: colors.primary },
-  vehicleOptionDetail: { ...typography.caption, color: colors.textTertiary, marginTop: 1 },
+  vehicleOptionName: { ...typography.label },
+  vehicleOptionDetail: { ...typography.caption, marginTop: 1 },
 });

@@ -10,11 +10,12 @@ import { supabase } from '@/config/supabase';
 import { vehicleService } from '@/services/vehicle/vehicleService';
 import { syncService } from '@/services/sync/syncService';
 import { syncQueue } from '@/services/sync/syncQueue';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
 export default function PrivacyScreen() {
+  const colors = useColors();
   const routeStorageEnabled = useSettingsStore((s) => s.routeStorageEnabled);
   const setRouteStorageEnabled = useSettingsStore((s) => s.setRouteStorageEnabled);
 
@@ -113,15 +114,15 @@ export default function PrivacyScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Route Storage Toggle */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
             <Ionicons name="navigate-outline" size={20} color={colors.primary} />
             <View style={styles.toggleTextWrapper}>
-              <Text style={styles.toggleLabel}>Route Storage</Text>
-              <Text style={styles.toggleHint}>
+              <Text style={[styles.toggleLabel, { color: colors.text }]}>Route Storage</Text>
+              <Text style={[styles.toggleHint, { color: colors.textTertiary }]}>
                 When enabled, GPS route points are saved with each session
               </Text>
             </View>
@@ -137,30 +138,30 @@ export default function PrivacyScreen() {
 
       {/* Destructive Actions */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Delete Data</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Delete Data</Text>
 
-        <TouchableOpacity style={styles.destructiveButton} onPress={handleDeleteAllSessions}>
-          <Ionicons name="trash-outline" size={18} color={colors.white} />
+        <TouchableOpacity style={[styles.destructiveButton, { backgroundColor: colors.error }]} onPress={handleDeleteAllSessions}>
+          <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
           <Text style={styles.destructiveButtonText}>Delete All Sessions</Text>
         </TouchableOpacity>
-        <Text style={styles.hint}>Removes all sessions, route data, and tracking gaps</Text>
+        <Text style={[styles.hint, { color: colors.textSecondary }]}>Removes all sessions, route data, and tracking gaps</Text>
 
-        <TouchableOpacity style={[styles.destructiveButton, { marginTop: spacing.md }]} onPress={handleDeleteRouteData}>
-          <Ionicons name="map-outline" size={18} color={colors.white} />
+        <TouchableOpacity style={[styles.destructiveButton, { marginTop: spacing.md, backgroundColor: colors.error }]} onPress={handleDeleteRouteData}>
+          <Ionicons name="map-outline" size={18} color="#FFFFFF" />
           <Text style={styles.destructiveButtonText}>Delete All Route Data</Text>
         </TouchableOpacity>
-        <Text style={styles.hint}>Removes route points only; sessions are kept</Text>
+        <Text style={[styles.hint, { color: colors.textSecondary }]}>Removes route points only; sessions are kept</Text>
       </View>
 
       {/* Account Deletion */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Account</Text>
 
         <TouchableOpacity style={styles.dangerButton} onPress={handleDeleteAccount}>
-          <Ionicons name="person-remove-outline" size={18} color={colors.white} />
+          <Ionicons name="person-remove-outline" size={18} color="#FFFFFF" />
           <Text style={styles.destructiveButtonText}>Delete Account</Text>
         </TouchableOpacity>
-        <Text style={styles.hint}>
+        <Text style={[styles.hint, { color: colors.textSecondary }]}>
           Deletes local data and signs you out. Contact support to fully remove your cloud account.
         </Text>
       </View>
@@ -169,14 +170,12 @@ export default function PrivacyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg },
+  container: { flex: 1, padding: spacing.lg },
 
   card: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
 
   toggleRow: {
@@ -186,14 +185,13 @@ const styles = StyleSheet.create({
   },
   toggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: spacing.md },
   toggleTextWrapper: { marginLeft: spacing.sm + 2, flex: 1 },
-  toggleLabel: { ...typography.label, color: colors.text },
-  toggleHint: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  toggleLabel: { ...typography.label },
+  toggleHint: { ...typography.caption, marginTop: 2 },
 
   section: { marginTop: spacing.xl },
-  sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
+  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
 
   destructiveButton: {
-    backgroundColor: colors.error,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -201,8 +199,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  destructiveButtonText: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  hint: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
+  destructiveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  hint: { ...typography.caption, marginTop: spacing.xs },
 
   dangerButton: {
     backgroundColor: '#991B1B',

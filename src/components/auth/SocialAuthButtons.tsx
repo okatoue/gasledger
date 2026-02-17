@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, Platform, Alert } from 'react-native
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { authService } from '@/services/auth/authService';
@@ -14,6 +14,7 @@ interface SocialAuthButtonsProps {
 }
 
 export default function SocialAuthButtons({ onError, onLoading }: SocialAuthButtonsProps) {
+  const colors = useColors();
   const [busy, setBusy] = useState(false);
 
   const handleApple = async () => {
@@ -82,12 +83,12 @@ export default function SocialAuthButtons({ onError, onLoading }: SocialAuthButt
 
       {Platform.OS === 'android' && (
         <Pressable
-          style={[styles.button, styles.googleButton]}
+          style={[styles.button, styles.googleButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => handleOAuth('google')}
           disabled={busy}
         >
           <Ionicons name="logo-google" size={20} color={colors.text} />
-          <Text style={[styles.buttonText, styles.googleText]}>Continue with Google</Text>
+          <Text style={[styles.buttonText, { color: colors.text }]}>Continue with Google</Text>
         </Pressable>
       )}
 
@@ -123,20 +124,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   appleText: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   googleButton: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  googleText: {
-    color: colors.text,
   },
   facebookButton: {
     backgroundColor: '#1877F2',
   },
   facebookText: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

@@ -13,11 +13,12 @@ import { formatDurationLabel, formatDistance, formatCurrency } from '@/utils/for
 import { useSubscription } from '@/hooks/useSubscription';
 import AdBanner from '@/components/common/AdBanner';
 import { adUnits } from '@/config/adUnits';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
 export default function SessionHistoryScreen() {
+  const colors = useColors();
   const router = useRouter();
   const distanceUnit = useSettingsStore((s) => s.distanceUnit);
   const session = useAuthStore((s) => s.session);
@@ -105,19 +106,19 @@ export default function SessionHistoryScreen() {
     const s = item.data;
     return (
       <TouchableOpacity
-        style={styles.tripCard}
+        style={[styles.tripCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         activeOpacity={0.7}
         onPress={() => router.push(`/history/${s.id}`)}
       >
         <View style={styles.tripLeft}>
-          <Text style={styles.tripDate}>{formatSessionDate(s.started_at_user)}</Text>
-          <Text style={styles.tripVehicle}>{vehicleMap.get(s.vehicle_id) ?? 'Unknown Vehicle'}</Text>
-          <Text style={styles.tripDetail}>
+          <Text style={[styles.tripDate, { color: colors.text }]}>{formatSessionDate(s.started_at_user)}</Text>
+          <Text style={[styles.tripVehicle, { color: colors.textSecondary }]}>{vehicleMap.get(s.vehicle_id) ?? 'Unknown Vehicle'}</Text>
+          <Text style={[styles.tripDetail, { color: colors.textTertiary }]}>
             {formatDistance(s.distance_m, distanceUnit)} &middot; {formatDurationLabel(getSessionDuration(s))}
           </Text>
         </View>
         <View style={styles.tripRight}>
-          <Text style={styles.tripCost}>${(s.est_cost ?? 0).toFixed(2)}</Text>
+          <Text style={[styles.tripCost, { color: colors.text }]}>${(s.est_cost ?? 0).toFixed(2)}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
         </View>
       </TouchableOpacity>
@@ -125,7 +126,7 @@ export default function SessionHistoryScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={listData}
         keyExtractor={(item) => (item.type === 'ad' ? item.key : item.data.id)}
@@ -133,27 +134,27 @@ export default function SessionHistoryScreen() {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <>
-            <View style={styles.statsStrip}>
+            <View style={[styles.statsStrip, { backgroundColor: colors.surface, shadowColor: colors.black }]}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{formatCurrency(monthlySpend)}</Text>
-                <Text style={styles.statLabel}>This Month</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{formatCurrency(monthlySpend)}</Text>
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>This Month</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{formatDistance(monthlyDistance, distanceUnit)}</Text>
-                <Text style={styles.statLabel}>Total Distance</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{formatDistance(monthlyDistance, distanceUnit)}</Text>
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Total Distance</Text>
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.spendingButton, !isPro && { marginBottom: spacing.xs }]}
+              style={[styles.spendingButton, { backgroundColor: colors.surface, borderColor: colors.border }, !isPro && { marginBottom: spacing.xs }]}
               activeOpacity={0.7}
               onPress={() => router.push('/history/spending')}
             >
               <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
-              <Text style={styles.spendingButtonText}>Spending Analytics</Text>
+              <Text style={[styles.spendingButtonText, { color: colors.text }]}>Spending Analytics</Text>
               {!isPro && (
                 <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
+                  <Text style={[styles.proBadgeText, { color: colors.white }]}>PRO</Text>
                 </View>
               )}
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -168,8 +169,8 @@ export default function SessionHistoryScreen() {
           !loading ? (
             <View style={styles.empty}>
               <Ionicons name="car-outline" size={48} color={colors.textTertiary} />
-              <Text style={styles.emptyTitle}>No trips yet</Text>
-              <Text style={styles.emptyMessage}>Start a drive from the Dashboard to see your history here.</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No trips yet</Text>
+              <Text style={[styles.emptyMessage, { color: colors.textSecondary }]}>Start a drive from the Dashboard to see your history here.</Text>
             </View>
           ) : null
         }
@@ -179,11 +180,10 @@ export default function SessionHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   listContent: { padding: spacing.lg, paddingBottom: 40 },
 
   tripCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     flexDirection: 'row',
@@ -191,46 +191,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.sm + 2,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   tripLeft: { flex: 1 },
-  tripDate: { ...typography.label, color: colors.text },
-  tripVehicle: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  tripDetail: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  tripDate: { ...typography.label },
+  tripVehicle: { ...typography.caption, marginTop: 2 },
+  tripDetail: { ...typography.caption, marginTop: 2 },
   tripRight: { flexDirection: 'row', alignItems: 'center', marginLeft: spacing.md },
-  tripCost: { ...typography.h3, color: colors.text, marginRight: 4 },
+  tripCost: { ...typography.h3, marginRight: 4 },
 
   statsStrip: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     flexDirection: 'row',
     padding: spacing.md + 4,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 2,
   },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { ...typography.h2, color: colors.text },
-  statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.sm },
+  statValue: { ...typography.h2 },
+  statLabel: { ...typography.caption, marginTop: 2 },
+  statDivider: { width: 1, marginHorizontal: spacing.sm },
 
   spendingButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
     gap: spacing.sm,
   },
   spendingButtonText: {
     ...typography.label,
-    color: colors.text,
     flex: 1,
   },
   proBadge: {
@@ -242,11 +236,10 @@ const styles = StyleSheet.create({
   proBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.white,
     letterSpacing: 0.5,
   },
 
   empty: { alignItems: 'center', paddingTop: 80 },
-  emptyTitle: { ...typography.h3, color: colors.text, marginTop: spacing.md },
-  emptyMessage: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm, paddingHorizontal: spacing.xl },
+  emptyTitle: { ...typography.h3, marginTop: spacing.md },
+  emptyMessage: { ...typography.body, textAlign: 'center', marginTop: spacing.sm, paddingHorizontal: spacing.xl },
 });

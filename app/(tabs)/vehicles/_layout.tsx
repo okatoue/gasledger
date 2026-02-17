@@ -1,13 +1,20 @@
 import { TouchableOpacity } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 
 export default function VehiclesLayout() {
   const router = useRouter();
+  const colors = useColors();
 
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen
         name="index"
         options={{

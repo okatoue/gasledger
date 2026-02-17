@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { sessionRepository } from '@/db/repositories/sessionRepository';
 import { formatCurrency } from '@/utils/formatting';
 import ProGate from '@/components/common/ProGate';
-import { colors } from '@/theme/colors';
+import { useColors } from '@/theme/useColors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 
@@ -27,6 +27,7 @@ const PERIODS: { key: Period; label: string }[] = [
 ];
 
 export default function SpendingScreen() {
+  const colors = useColors();
   const session = useAuthStore((s) => s.session);
   const [period, setPeriod] = useState<Period>('30d');
   const [loading, setLoading] = useState(true);
@@ -72,16 +73,24 @@ export default function SpendingScreen() {
 
   return (
     <ProGate featureName="Spending Analytics">
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
         {/* Period selector */}
         <View style={styles.chipRow}>
           {PERIODS.map((p) => (
             <TouchableOpacity
               key={p.key}
-              style={[styles.chip, period === p.key && styles.chipActive]}
+              style={[
+                styles.chip,
+                { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+                period === p.key && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
               onPress={() => setPeriod(p.key)}
             >
-              <Text style={[styles.chipText, period === p.key && styles.chipTextActive]}>
+              <Text style={[
+                styles.chipText,
+                { color: colors.textSecondary },
+                period === p.key && { color: colors.white, fontWeight: '600' },
+              ]}>
                 {p.label}
               </Text>
             </TouchableOpacity>
@@ -96,17 +105,17 @@ export default function SpendingScreen() {
         ) : barData.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="bar-chart-outline" size={48} color={colors.textTertiary} />
-            <Text style={styles.emptyText}>No spending data for this period</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No spending data for this period</Text>
           </View>
         ) : (
-          <View style={styles.chartCard}>
+          <View style={[styles.chartCard, { backgroundColor: colors.surface }]}>
             <BarChart
               data={barData.map((d) => ({
                 value: d.value,
                 label: d.label,
                 frontColor: colors.primary,
                 topLabelComponent: () => (
-                  <Text style={styles.barTopLabel}>
+                  <Text style={[styles.barTopLabel, { color: colors.textSecondary }]}>
                     {d.value > 0 ? `$${d.value.toFixed(0)}` : ''}
                   </Text>
                 ),
@@ -114,8 +123,8 @@ export default function SpendingScreen() {
               barWidth={barData.length > 15 ? 12 : 20}
               spacing={barData.length > 15 ? 6 : 12}
               noOfSections={4}
-              yAxisTextStyle={styles.axisText}
-              xAxisLabelTextStyle={styles.axisText}
+              yAxisTextStyle={[styles.axisText, { color: colors.textTertiary }]}
+              xAxisLabelTextStyle={[styles.axisText, { color: colors.textTertiary }]}
               hideRules
               yAxisThickness={0}
               xAxisThickness={1}
@@ -128,17 +137,17 @@ export default function SpendingScreen() {
 
         {/* Summary */}
         {!loading && barData.length > 0 && (
-          <View style={styles.summaryCard}>
+          <View style={[styles.summaryCard, { backgroundColor: colors.surface, shadowColor: colors.black }]}>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Total Spend</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(totalSpend)}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Total Spend</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{formatCurrency(totalSpend)}</Text>
             </View>
-            <View style={styles.summaryDivider} />
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>
+              <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>
                 Avg / {period === '6m' || period === '1y' ? 'Month' : 'Day'}
               </Text>
-              <Text style={styles.summaryValue}>{formatCurrency(avgSpend)}</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{formatCurrency(avgSpend)}</Text>
             </View>
           </View>
         )}
@@ -148,7 +157,7 @@ export default function SpendingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: 40 },
 
   chipRow: {
@@ -160,20 +169,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
   },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: { ...typography.caption, color: colors.textSecondary },
-  chipTextActive: { color: colors.white, fontWeight: '600' },
+  chipText: { ...typography.caption },
 
   chartCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -181,13 +182,11 @@ const styles = StyleSheet.create({
   },
   barTopLabel: {
     ...typography.caption,
-    color: colors.textSecondary,
     fontSize: 9,
     marginBottom: 2,
   },
   axisText: {
     ...typography.caption,
-    color: colors.textTertiary,
     fontSize: 10,
   },
 
@@ -204,22 +203,19 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...typography.body,
-    color: colors.textSecondary,
   },
 
   summaryCard: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     flexDirection: 'row',
     padding: spacing.md + 4,
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 2,
   },
   summaryItem: { flex: 1, alignItems: 'center' },
-  summaryLabel: { ...typography.caption, color: colors.textTertiary },
-  summaryValue: { ...typography.h2, color: colors.text, marginTop: 4 },
-  summaryDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.sm },
+  summaryLabel: { ...typography.caption },
+  summaryValue: { ...typography.h2, marginTop: 4 },
+  summaryDivider: { width: 1, marginHorizontal: spacing.sm },
 });
